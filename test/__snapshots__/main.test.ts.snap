@@ -2,11 +2,1371 @@
 
 exports[`RudyLLMStack Snapshot 1`] = `
 {
+  "Mappings": {
+    "LatestNodeRuntimeMap": {
+      "af-south-1": {
+        "value": "nodejs20.x",
+      },
+      "ap-east-1": {
+        "value": "nodejs20.x",
+      },
+      "ap-northeast-1": {
+        "value": "nodejs20.x",
+      },
+      "ap-northeast-2": {
+        "value": "nodejs20.x",
+      },
+      "ap-northeast-3": {
+        "value": "nodejs20.x",
+      },
+      "ap-south-1": {
+        "value": "nodejs20.x",
+      },
+      "ap-south-2": {
+        "value": "nodejs20.x",
+      },
+      "ap-southeast-1": {
+        "value": "nodejs20.x",
+      },
+      "ap-southeast-2": {
+        "value": "nodejs20.x",
+      },
+      "ap-southeast-3": {
+        "value": "nodejs20.x",
+      },
+      "ap-southeast-4": {
+        "value": "nodejs20.x",
+      },
+      "ap-southeast-5": {
+        "value": "nodejs20.x",
+      },
+      "ap-southeast-7": {
+        "value": "nodejs20.x",
+      },
+      "ca-central-1": {
+        "value": "nodejs20.x",
+      },
+      "ca-west-1": {
+        "value": "nodejs20.x",
+      },
+      "cn-north-1": {
+        "value": "nodejs20.x",
+      },
+      "cn-northwest-1": {
+        "value": "nodejs20.x",
+      },
+      "eu-central-1": {
+        "value": "nodejs20.x",
+      },
+      "eu-central-2": {
+        "value": "nodejs20.x",
+      },
+      "eu-isoe-west-1": {
+        "value": "nodejs18.x",
+      },
+      "eu-north-1": {
+        "value": "nodejs20.x",
+      },
+      "eu-south-1": {
+        "value": "nodejs20.x",
+      },
+      "eu-south-2": {
+        "value": "nodejs20.x",
+      },
+      "eu-west-1": {
+        "value": "nodejs20.x",
+      },
+      "eu-west-2": {
+        "value": "nodejs20.x",
+      },
+      "eu-west-3": {
+        "value": "nodejs20.x",
+      },
+      "il-central-1": {
+        "value": "nodejs20.x",
+      },
+      "me-central-1": {
+        "value": "nodejs20.x",
+      },
+      "me-south-1": {
+        "value": "nodejs20.x",
+      },
+      "mx-central-1": {
+        "value": "nodejs20.x",
+      },
+      "sa-east-1": {
+        "value": "nodejs20.x",
+      },
+      "us-east-1": {
+        "value": "nodejs20.x",
+      },
+      "us-east-2": {
+        "value": "nodejs20.x",
+      },
+      "us-gov-east-1": {
+        "value": "nodejs20.x",
+      },
+      "us-gov-west-1": {
+        "value": "nodejs20.x",
+      },
+      "us-iso-east-1": {
+        "value": "nodejs18.x",
+      },
+      "us-iso-west-1": {
+        "value": "nodejs18.x",
+      },
+      "us-isob-east-1": {
+        "value": "nodejs18.x",
+      },
+      "us-west-1": {
+        "value": "nodejs20.x",
+      },
+      "us-west-2": {
+        "value": "nodejs20.x",
+      },
+    },
+  },
+  "Outputs": {
+    "OpenWebUIEcsConstructCloudFrontDomain4387AEB4": {
+      "Description": "The CloudFront distribution domain name",
+      "Value": {
+        "Fn::GetAtt": [
+          "OpenWebUIEcsConstructWebUIDistribution2C8584A9",
+          "DomainName",
+        ],
+      },
+    },
+    "OpenWebUIEcsConstructOpenWebUISvcLoadBalancerDNS30D14397": {
+      "Value": {
+        "Fn::GetAtt": [
+          "OpenWebUIEcsConstructOpenWebUIALB51A0EC30",
+          "DNSName",
+        ],
+      },
+    },
+    "OpenWebUIEcsConstructOpenWebUISvcServiceURL05090434": {
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "http://",
+            {
+              "Fn::GetAtt": [
+                "OpenWebUIEcsConstructOpenWebUIALB51A0EC30",
+                "DNSName",
+              ],
+            },
+          ],
+        ],
+      },
+    },
+  },
   "Parameters": {
     "BootstrapVersion": {
       "Default": "/cdk-bootstrap/hnb659fds/version",
       "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]",
       "Type": "AWS::SSM::Parameter::Value<String>",
+    },
+  },
+  "Resources": {
+    "AWS679f53fac002430cb0da5b7982bd22872D164C4C": {
+      "DependsOn": [
+        "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2",
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-\${AWS::Region}",
+          },
+          "S3Key": "4cd2f2411231aa073e609dc99a49b5c5e974252bf9abf0f9350d237d17cce8be.zip",
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2",
+            "Arn",
+          ],
+        },
+        "Runtime": {
+          "Fn::FindInMap": [
+            "LatestNodeRuntimeMap",
+            {
+              "Ref": "AWS::Region",
+            },
+            "value",
+          ],
+        },
+        "Timeout": 120,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "OpenWebUIEcsConstructCfPrefixListLookupB606F6F7": {
+      "DeletionPolicy": "Delete",
+      "DependsOn": [
+        "OpenWebUIEcsConstructCfPrefixListLookupCustomResourcePolicy49DC584F",
+      ],
+      "Properties": {
+        "Create": "{"service":"EC2","action":"describeManagedPrefixLists","parameters":{"Filters":[{"Name":"prefix-list-name","Values":["com.amazonaws.global.cloudfront.origin-facing"]}]},"physicalResourceId":{"id":"CfPrefixListLookup"}}",
+        "InstallLatestAwsSdk": false,
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "AWS679f53fac002430cb0da5b7982bd22872D164C4C",
+            "Arn",
+          ],
+        },
+        "Update": "{"service":"EC2","action":"describeManagedPrefixLists","parameters":{"Filters":[{"Name":"prefix-list-name","Values":["com.amazonaws.global.cloudfront.origin-facing"]}]},"physicalResourceId":{"id":"CfPrefixListLookup"}}",
+      },
+      "Type": "Custom::AWS",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "OpenWebUIEcsConstructCfPrefixListLookupCustomResourcePolicy49DC584F": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "ec2:DescribeManagedPrefixLists",
+              "Effect": "Allow",
+              "Resource": "*",
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "OpenWebUIEcsConstructCfPrefixListLookupCustomResourcePolicy49DC584F",
+        "Roles": [
+          {
+            "Ref": "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "OpenWebUIEcsConstructEfsFileSystem046FFDDD": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "Encrypted": true,
+        "FileSystemTags": [
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/EfsFileSystem",
+          },
+        ],
+        "PerformanceMode": "generalPurpose",
+      },
+      "Type": "AWS::EFS::FileSystem",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "OpenWebUIEcsConstructEfsFileSystemEfsMountTarget18D6A7668": {
+      "Properties": {
+        "FileSystemId": {
+          "Ref": "OpenWebUIEcsConstructEfsFileSystem046FFDDD",
+        },
+        "SecurityGroups": [
+          {
+            "Fn::GetAtt": [
+              "OpenWebUIEcsConstructEfsFileSystemEfsSecurityGroup1A9CE365",
+              "GroupId",
+            ],
+          },
+        ],
+        "SubnetId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet1SubnetD89122E9",
+        },
+      },
+      "Type": "AWS::EFS::MountTarget",
+    },
+    "OpenWebUIEcsConstructEfsFileSystemEfsMountTarget2EA51FC45": {
+      "Properties": {
+        "FileSystemId": {
+          "Ref": "OpenWebUIEcsConstructEfsFileSystem046FFDDD",
+        },
+        "SecurityGroups": [
+          {
+            "Fn::GetAtt": [
+              "OpenWebUIEcsConstructEfsFileSystemEfsSecurityGroup1A9CE365",
+              "GroupId",
+            ],
+          },
+        ],
+        "SubnetId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet2Subnet3CCB9D84",
+        },
+      },
+      "Type": "AWS::EFS::MountTarget",
+    },
+    "OpenWebUIEcsConstructEfsFileSystemEfsSecurityGroup1A9CE365": {
+      "Properties": {
+        "GroupDescription": "TestRudyLLMStack/OpenWebUIEcsConstruct/EfsFileSystem/EfsSecurityGroup",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1",
+          },
+        ],
+        "SecurityGroupIngress": [
+          {
+            "CidrIp": {
+              "Fn::GetAtt": [
+                "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+                "CidrBlock",
+              ],
+            },
+            "Description": "Allow ECS tasks access to EFS",
+            "FromPort": 2049,
+            "IpProtocol": "tcp",
+            "ToPort": 2049,
+          },
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/EfsFileSystem",
+          },
+        ],
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::EC2::SecurityGroup",
+    },
+    "OpenWebUIEcsConstructEfsFileSystemOpenWebUIAccessPoint2CC96066": {
+      "Properties": {
+        "AccessPointTags": [
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/EfsFileSystem/OpenWebUIAccessPoint",
+          },
+        ],
+        "FileSystemId": {
+          "Ref": "OpenWebUIEcsConstructEfsFileSystem046FFDDD",
+        },
+        "PosixUser": {
+          "Gid": "1000",
+          "Uid": "1000",
+        },
+        "RootDirectory": {
+          "CreationInfo": {
+            "OwnerGid": "1000",
+            "OwnerUid": "1000",
+            "Permissions": "750",
+          },
+          "Path": "/openwebui",
+        },
+      },
+      "Type": "AWS::EFS::AccessPoint",
+    },
+    "OpenWebUIEcsConstructEfsFileSystemPipelinesAccessPoint876A6B2F": {
+      "Properties": {
+        "AccessPointTags": [
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/EfsFileSystem/PipelinesAccessPoint",
+          },
+        ],
+        "FileSystemId": {
+          "Ref": "OpenWebUIEcsConstructEfsFileSystem046FFDDD",
+        },
+        "PosixUser": {
+          "Gid": "1000",
+          "Uid": "1000",
+        },
+        "RootDirectory": {
+          "CreationInfo": {
+            "OwnerGid": "1000",
+            "OwnerUid": "1000",
+            "Permissions": "750",
+          },
+          "Path": "/pipelines",
+        },
+      },
+      "Type": "AWS::EFS::AccessPoint",
+    },
+    "OpenWebUIEcsConstructHTTPListenerAllowValidHeaderRuleEF3A8E12": {
+      "Properties": {
+        "Actions": [
+          {
+            "TargetGroupArn": {
+              "Ref": "OpenWebUIEcsConstructOpenWebUIALBPublicListenerECSGroup08AE602A",
+            },
+            "Type": "forward",
+          },
+        ],
+        "Conditions": [
+          {
+            "Field": "http-header",
+            "HttpHeaderConfig": {
+              "HttpHeaderName": "x-unique-header",
+              "Values": [
+                "RUDY-LLM-PRIVATE-LINK",
+              ],
+            },
+          },
+        ],
+        "ListenerArn": {
+          "Ref": "OpenWebUIEcsConstructHTTPListenerBDFBDBFE",
+        },
+        "Priority": 1,
+      },
+      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+    },
+    "OpenWebUIEcsConstructHTTPListenerBDFBDBFE": {
+      "Properties": {
+        "DefaultActions": [
+          {
+            "FixedResponseConfig": {
+              "ContentType": "text/plain",
+              "MessageBody": "Forbidden",
+              "StatusCode": "403",
+            },
+            "Type": "fixed-response",
+          },
+        ],
+        "LoadBalancerArn": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIALB51A0EC30",
+        },
+        "Port": 80,
+        "Protocol": "HTTP",
+      },
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+    },
+    "OpenWebUIEcsConstructOpenWebUIALB51A0EC30": {
+      "DependsOn": [
+        "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1DefaultRoute87FEA455",
+        "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1RouteTableAssociation30EADA76",
+        "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2DefaultRoute1D881109",
+        "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2RouteTableAssociation2B59944C",
+      ],
+      "Properties": {
+        "LoadBalancerAttributes": [
+          {
+            "Key": "deletion_protection.enabled",
+            "Value": "false",
+          },
+        ],
+        "Scheme": "internet-facing",
+        "SecurityGroups": [
+          {
+            "Fn::GetAtt": [
+              "OpenWebUIEcsConstructOpenWebUIALBSecurityGroup7BE1F221",
+              "GroupId",
+            ],
+          },
+        ],
+        "Subnets": [
+          {
+            "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1SubnetB79F86F5",
+          },
+          {
+            "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2SubnetE9672946",
+          },
+        ],
+        "Type": "application",
+      },
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+    },
+    "OpenWebUIEcsConstructOpenWebUIALBPublicListenerE5EE8D3F": {
+      "Properties": {
+        "DefaultActions": [
+          {
+            "TargetGroupArn": {
+              "Ref": "OpenWebUIEcsConstructOpenWebUIALBPublicListenerECSGroup08AE602A",
+            },
+            "Type": "forward",
+          },
+        ],
+        "LoadBalancerArn": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIALB51A0EC30",
+        },
+        "Port": 80,
+        "Protocol": "HTTP",
+      },
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+    },
+    "OpenWebUIEcsConstructOpenWebUIALBPublicListenerECSGroup08AE602A": {
+      "Properties": {
+        "Port": 80,
+        "Protocol": "HTTP",
+        "TargetGroupAttributes": [
+          {
+            "Key": "stickiness.enabled",
+            "Value": "false",
+          },
+        ],
+        "TargetType": "ip",
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+    },
+    "OpenWebUIEcsConstructOpenWebUIALBSecurityGroup7BE1F221": {
+      "Properties": {
+        "GroupDescription": "Automatically created Security Group for ELB TestRudyLLMStackOpenWebUIEcsConstructOpenWebUIALB07E92149",
+        "SecurityGroupIngress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow from anyone on port 80",
+            "FromPort": 80,
+            "IpProtocol": "tcp",
+            "ToPort": 80,
+          },
+        ],
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::EC2::SecurityGroup",
+    },
+    "OpenWebUIEcsConstructOpenWebUIALBSecurityGroupfromIndirectPeer30002614FFEC": {
+      "Properties": {
+        "Description": {
+          "Fn::Join": [
+            "",
+            [
+              "from ",
+              {
+                "Fn::GetAtt": [
+                  "OpenWebUIEcsConstructCfPrefixListLookupB606F6F7",
+                  "PrefixLists.0.PrefixListId",
+                ],
+              },
+              ":3000",
+            ],
+          ],
+        },
+        "FromPort": 3000,
+        "GroupId": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructOpenWebUIALBSecurityGroup7BE1F221",
+            "GroupId",
+          ],
+        },
+        "IpProtocol": "tcp",
+        "SourcePrefixListId": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructCfPrefixListLookupB606F6F7",
+            "PrefixLists.0.PrefixListId",
+          ],
+        },
+        "ToPort": 3000,
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress",
+    },
+    "OpenWebUIEcsConstructOpenWebUIALBSecurityGrouptoTestRudyLLMStackOpenWebUIEcsConstructOpenWebUISvcServiceSecurityGroup5B1517108080E6C28BA1": {
+      "Properties": {
+        "Description": "Load balancer to target",
+        "DestinationSecurityGroupId": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructOpenWebUISvcServiceSecurityGroup6EAF91CC",
+            "GroupId",
+          ],
+        },
+        "FromPort": 8080,
+        "GroupId": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructOpenWebUIALBSecurityGroup7BE1F221",
+            "GroupId",
+          ],
+        },
+        "IpProtocol": "tcp",
+        "ToPort": 8080,
+      },
+      "Type": "AWS::EC2::SecurityGroupEgress",
+    },
+    "OpenWebUIEcsConstructOpenWebUICluster07E729DC": {
+      "Type": "AWS::ECS::Cluster",
+    },
+    "OpenWebUIEcsConstructOpenWebUISvcServiceF26E7F2A": {
+      "DependsOn": [
+        "OpenWebUIEcsConstructHTTPListenerAllowValidHeaderRuleEF3A8E12",
+        "OpenWebUIEcsConstructOpenWebUIALBPublicListenerECSGroup08AE602A",
+        "OpenWebUIEcsConstructOpenWebUIALBPublicListenerE5EE8D3F",
+        "OpenWebUIEcsConstructOpenWebUITaskDefTaskRoleDefaultPolicyD6270A33",
+        "OpenWebUIEcsConstructOpenWebUITaskDefTaskRole756CEA41",
+      ],
+      "Properties": {
+        "Cluster": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUICluster07E729DC",
+        },
+        "DeploymentConfiguration": {
+          "Alarms": {
+            "AlarmNames": [],
+            "Enable": false,
+            "Rollback": false,
+          },
+          "MaximumPercent": 200,
+          "MinimumHealthyPercent": 50,
+        },
+        "DesiredCount": 1,
+        "EnableECSManagedTags": false,
+        "HealthCheckGracePeriodSeconds": 60,
+        "LaunchType": "FARGATE",
+        "LoadBalancers": [
+          {
+            "ContainerName": "openwebui",
+            "ContainerPort": 8080,
+            "TargetGroupArn": {
+              "Ref": "OpenWebUIEcsConstructOpenWebUIALBPublicListenerECSGroup08AE602A",
+            },
+          },
+        ],
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "ENABLED",
+            "SecurityGroups": [
+              {
+                "Fn::GetAtt": [
+                  "OpenWebUIEcsConstructOpenWebUISvcServiceSecurityGroup6EAF91CC",
+                  "GroupId",
+                ],
+              },
+            ],
+            "Subnets": [
+              {
+                "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1SubnetB79F86F5",
+              },
+              {
+                "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2SubnetE9672946",
+              },
+            ],
+          },
+        },
+        "TaskDefinition": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUITaskDef6A6C59F6",
+        },
+      },
+      "Type": "AWS::ECS::Service",
+    },
+    "OpenWebUIEcsConstructOpenWebUISvcServiceSecurityGroup6EAF91CC": {
+      "DependsOn": [
+        "OpenWebUIEcsConstructOpenWebUITaskDefTaskRoleDefaultPolicyD6270A33",
+        "OpenWebUIEcsConstructOpenWebUITaskDefTaskRole756CEA41",
+      ],
+      "Properties": {
+        "GroupDescription": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUISvc/Service/SecurityGroup",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1",
+          },
+        ],
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::EC2::SecurityGroup",
+    },
+    "OpenWebUIEcsConstructOpenWebUISvcServiceSecurityGroupfromTestRudyLLMStackOpenWebUIEcsConstructOpenWebUIALBSecurityGroupBA7DAB08808025B64943": {
+      "DependsOn": [
+        "OpenWebUIEcsConstructOpenWebUITaskDefTaskRoleDefaultPolicyD6270A33",
+        "OpenWebUIEcsConstructOpenWebUITaskDefTaskRole756CEA41",
+      ],
+      "Properties": {
+        "Description": "Load balancer to target",
+        "FromPort": 8080,
+        "GroupId": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructOpenWebUISvcServiceSecurityGroup6EAF91CC",
+            "GroupId",
+          ],
+        },
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructOpenWebUIALBSecurityGroup7BE1F221",
+            "GroupId",
+          ],
+        },
+        "ToPort": 8080,
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress",
+    },
+    "OpenWebUIEcsConstructOpenWebUITaskDef6A6C59F6": {
+      "Properties": {
+        "ContainerDefinitions": [
+          {
+            "Environment": [
+              {
+                "Name": "DATA_DIR",
+                "Value": "/app/backend/data",
+              },
+            ],
+            "Essential": true,
+            "Image": "ghcr.io/open-webui/open-webui:main",
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "OpenWebUIEcsConstructOpenWebUITaskDefopenwebuiLogGroup4ECF48C7",
+                },
+                "awslogs-region": {
+                  "Ref": "AWS::Region",
+                },
+                "awslogs-stream-prefix": "openwebui",
+              },
+            },
+            "MountPoints": [
+              {
+                "ContainerPath": "/app/backend/data",
+                "ReadOnly": false,
+                "SourceVolume": "openwebuiVolume",
+              },
+            ],
+            "Name": "openwebui",
+            "PortMappings": [
+              {
+                "ContainerPort": 8080,
+                "Protocol": "tcp",
+              },
+            ],
+          },
+          {
+            "Essential": true,
+            "Image": "ghcr.io/open-webui/pipelines:main",
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "OpenWebUIEcsConstructOpenWebUITaskDefpipelinesLogGroup0925527A",
+                },
+                "awslogs-region": {
+                  "Ref": "AWS::Region",
+                },
+                "awslogs-stream-prefix": "pipelines",
+              },
+            },
+            "MountPoints": [
+              {
+                "ContainerPath": "/app/pipelines",
+                "ReadOnly": false,
+                "SourceVolume": "pipelinesVolume",
+              },
+            ],
+            "Name": "pipelines",
+          },
+        ],
+        "Cpu": "512",
+        "ExecutionRoleArn": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructOpenWebUITaskDefExecutionRole89DDA979",
+            "Arn",
+          ],
+        },
+        "Family": "TestRudyLLMStackOpenWebUIEcsConstructOpenWebUITaskDef1A7587C4",
+        "Memory": "2048",
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": [
+          "FARGATE",
+        ],
+        "TaskRoleArn": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructOpenWebUITaskDefTaskRole756CEA41",
+            "Arn",
+          ],
+        },
+        "Volumes": [
+          {
+            "EFSVolumeConfiguration": {
+              "AuthorizationConfig": {
+                "AccessPointId": {
+                  "Ref": "OpenWebUIEcsConstructEfsFileSystemOpenWebUIAccessPoint2CC96066",
+                },
+                "IAM": "DISABLED",
+              },
+              "FilesystemId": {
+                "Ref": "OpenWebUIEcsConstructEfsFileSystem046FFDDD",
+              },
+              "TransitEncryption": "ENABLED",
+            },
+            "Name": "openwebuiVolume",
+          },
+          {
+            "EFSVolumeConfiguration": {
+              "AuthorizationConfig": {
+                "AccessPointId": {
+                  "Ref": "OpenWebUIEcsConstructEfsFileSystemPipelinesAccessPoint876A6B2F",
+                },
+                "IAM": "DISABLED",
+              },
+              "FilesystemId": {
+                "Ref": "OpenWebUIEcsConstructEfsFileSystem046FFDDD",
+              },
+              "TransitEncryption": "ENABLED",
+            },
+            "Name": "pipelinesVolume",
+          },
+        ],
+      },
+      "Type": "AWS::ECS::TaskDefinition",
+    },
+    "OpenWebUIEcsConstructOpenWebUITaskDefExecutionRole89DDA979": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "OpenWebUIEcsConstructOpenWebUITaskDefExecutionRoleDefaultPolicyEBB14346": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "OpenWebUIEcsConstructOpenWebUITaskDefopenwebuiLogGroup4ECF48C7",
+                  "Arn",
+                ],
+              },
+            },
+            {
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "OpenWebUIEcsConstructOpenWebUITaskDefpipelinesLogGroup0925527A",
+                  "Arn",
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "OpenWebUIEcsConstructOpenWebUITaskDefExecutionRoleDefaultPolicyEBB14346",
+        "Roles": [
+          {
+            "Ref": "OpenWebUIEcsConstructOpenWebUITaskDefExecutionRole89DDA979",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "OpenWebUIEcsConstructOpenWebUITaskDefTaskRole756CEA41": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "OpenWebUIEcsConstructOpenWebUITaskDefTaskRoleDefaultPolicyD6270A33": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "bedrock:*",
+              "Effect": "Allow",
+              "Resource": "*",
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "OpenWebUIEcsConstructOpenWebUITaskDefTaskRoleDefaultPolicyD6270A33",
+        "Roles": [
+          {
+            "Ref": "OpenWebUIEcsConstructOpenWebUITaskDefTaskRole756CEA41",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "OpenWebUIEcsConstructOpenWebUITaskDefopenwebuiLogGroup4ECF48C7": {
+      "DeletionPolicy": "Retain",
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Retain",
+    },
+    "OpenWebUIEcsConstructOpenWebUITaskDefpipelinesLogGroup0925527A": {
+      "DeletionPolicy": "Retain",
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Retain",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpc7274DD13": {
+      "Properties": {
+        "CidrBlock": "10.0.0.0/16",
+        "EnableDnsHostnames": true,
+        "EnableDnsSupport": true,
+        "InstanceTenancy": "default",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUIVpc",
+          },
+        ],
+      },
+      "Type": "AWS::EC2::VPC",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcIGWEEF6C661": {
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUIVpc",
+          },
+        ],
+      },
+      "Type": "AWS::EC2::InternetGateway",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet1DefaultRouteB30591E9": {
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1NATGateway7433C950",
+        },
+        "RouteTableId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet1RouteTable5407638D",
+        },
+      },
+      "Type": "AWS::EC2::Route",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet1RouteTable5407638D": {
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUIVpc/PrivateSubnet1",
+          },
+        ],
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::EC2::RouteTable",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet1RouteTableAssociationEC6F6A78": {
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet1RouteTable5407638D",
+        },
+        "SubnetId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet1SubnetD89122E9",
+        },
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet1SubnetD89122E9": {
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": "",
+            },
+          ],
+        },
+        "CidrBlock": "10.0.128.0/18",
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Private",
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Private",
+          },
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUIVpc/PrivateSubnet1",
+          },
+        ],
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::EC2::Subnet",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet2DefaultRouteF7171B7F": {
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2NATGateway8C42406C",
+        },
+        "RouteTableId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet2RouteTableADC13B38",
+        },
+      },
+      "Type": "AWS::EC2::Route",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet2RouteTableADC13B38": {
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUIVpc/PrivateSubnet2",
+          },
+        ],
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::EC2::RouteTable",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet2RouteTableAssociation740EB618": {
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet2RouteTableADC13B38",
+        },
+        "SubnetId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet2Subnet3CCB9D84",
+        },
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPrivateSubnet2Subnet3CCB9D84": {
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": "",
+            },
+          ],
+        },
+        "CidrBlock": "10.0.192.0/18",
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Private",
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Private",
+          },
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUIVpc/PrivateSubnet2",
+          },
+        ],
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::EC2::Subnet",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1DefaultRoute87FEA455": {
+      "DependsOn": [
+        "OpenWebUIEcsConstructOpenWebUIVpcVPCGW2ECA8DE1",
+      ],
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcIGWEEF6C661",
+        },
+        "RouteTableId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1RouteTable2A379D2A",
+        },
+      },
+      "Type": "AWS::EC2::Route",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1EIP0AE46B63": {
+      "Properties": {
+        "Domain": "vpc",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUIVpc/PublicSubnet1",
+          },
+        ],
+      },
+      "Type": "AWS::EC2::EIP",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1NATGateway7433C950": {
+      "DependsOn": [
+        "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1DefaultRoute87FEA455",
+        "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1RouteTableAssociation30EADA76",
+      ],
+      "Properties": {
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1EIP0AE46B63",
+            "AllocationId",
+          ],
+        },
+        "SubnetId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1SubnetB79F86F5",
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUIVpc/PublicSubnet1",
+          },
+        ],
+      },
+      "Type": "AWS::EC2::NatGateway",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1RouteTable2A379D2A": {
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUIVpc/PublicSubnet1",
+          },
+        ],
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::EC2::RouteTable",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1RouteTableAssociation30EADA76": {
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1RouteTable2A379D2A",
+        },
+        "SubnetId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1SubnetB79F86F5",
+        },
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1SubnetB79F86F5": {
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": "",
+            },
+          ],
+        },
+        "CidrBlock": "10.0.0.0/18",
+        "MapPublicIpOnLaunch": true,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Public",
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Public",
+          },
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUIVpc/PublicSubnet1",
+          },
+        ],
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::EC2::Subnet",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2DefaultRoute1D881109": {
+      "DependsOn": [
+        "OpenWebUIEcsConstructOpenWebUIVpcVPCGW2ECA8DE1",
+      ],
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcIGWEEF6C661",
+        },
+        "RouteTableId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2RouteTable418A7F62",
+        },
+      },
+      "Type": "AWS::EC2::Route",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2EIP553E80CB": {
+      "Properties": {
+        "Domain": "vpc",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUIVpc/PublicSubnet2",
+          },
+        ],
+      },
+      "Type": "AWS::EC2::EIP",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2NATGateway8C42406C": {
+      "DependsOn": [
+        "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2DefaultRoute1D881109",
+        "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2RouteTableAssociation2B59944C",
+      ],
+      "Properties": {
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2EIP553E80CB",
+            "AllocationId",
+          ],
+        },
+        "SubnetId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2SubnetE9672946",
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUIVpc/PublicSubnet2",
+          },
+        ],
+      },
+      "Type": "AWS::EC2::NatGateway",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2RouteTable418A7F62": {
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUIVpc/PublicSubnet2",
+          },
+        ],
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::EC2::RouteTable",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2RouteTableAssociation2B59944C": {
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2RouteTable418A7F62",
+        },
+        "SubnetId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2SubnetE9672946",
+        },
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet2SubnetE9672946": {
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": "",
+            },
+          ],
+        },
+        "CidrBlock": "10.0.64.0/18",
+        "MapPublicIpOnLaunch": true,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Public",
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Public",
+          },
+          {
+            "Key": "Name",
+            "Value": "TestRudyLLMStack/OpenWebUIEcsConstruct/OpenWebUIVpc/PublicSubnet2",
+          },
+        ],
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::EC2::Subnet",
+    },
+    "OpenWebUIEcsConstructOpenWebUIVpcVPCGW2ECA8DE1": {
+      "Properties": {
+        "InternetGatewayId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpcIGWEEF6C661",
+        },
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+    },
+    "OpenWebUIEcsConstructWebUIDistribution2C8584A9": {
+      "Properties": {
+        "DistributionConfig": {
+          "DefaultCacheBehavior": {
+            "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+            "Compress": true,
+            "TargetOriginId": "TestRudyLLMStackOpenWebUIEcsConstructWebUIDistributionOrigin1A106FB09",
+            "ViewerProtocolPolicy": "redirect-to-https",
+          },
+          "Enabled": true,
+          "HttpVersion": "http2",
+          "IPV6Enabled": true,
+          "Origins": [
+            {
+              "CustomOriginConfig": {
+                "OriginProtocolPolicy": "match-viewer",
+                "OriginSSLProtocols": [
+                  "TLSv1.2",
+                ],
+              },
+              "DomainName": {
+                "Fn::GetAtt": [
+                  "OpenWebUIEcsConstructOpenWebUIALB51A0EC30",
+                  "DNSName",
+                ],
+              },
+              "Id": "TestRudyLLMStackOpenWebUIEcsConstructWebUIDistributionOrigin1A106FB09",
+              "OriginCustomHeaders": [
+                {
+                  "HeaderName": "x-unique-header",
+                  "HeaderValue": "RUDY-LLM-PRIVATE-LINK",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      "Type": "AWS::CloudFront::Distribution",
     },
   },
   "Rules": {

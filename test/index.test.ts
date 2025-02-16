@@ -1,15 +1,15 @@
-import { App } from 'aws-cdk-lib';
+import { App, Stack } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
-import { OpenWebUIEcsStack } from '../src/llm-construct/index';
+import { OpenWebUIEcsConstruct } from '../src/llm-construct/index';
 
-describe('OpenWebUIEcsStack', () => {
+describe('OpenWebUIEcsConstruct', () => {
     let app: App;
-    let stack: OpenWebUIEcsStack;
     let template: Template;
 
     beforeAll(() => {
         app = new App();
-        stack = new OpenWebUIEcsStack(app, 'TestOpenWebUIEcsStack');
+        const stack = new Stack(app, 'TestStack');
+        new OpenWebUIEcsConstruct(stack, 'OpenWebUIEcsConstruct');
         template = Template.fromStack(stack);
     });
 
@@ -89,21 +89,26 @@ describe('OpenWebUIEcsStack', () => {
     });
 
     test('CloudFront Distribution output "CloudFrontDomain" is defined', () => {
-        // Check that the CloudFront distribution domain output exists.
-        template.hasOutput('CloudFrontDomain', {
-            Description: 'The CloudFront distribution domain name'
-        });
+        // Find all outputs
+        const outputs = template.findOutputs('*');
+
+        // Ensure at least one output key contains 'CloudFrontDomain'
+        const domainOutputKey = Object.keys(outputs).find(key => key.includes('CloudFrontDomain'));
+        expect(domainOutputKey).toBeDefined();
+
+        // Confirm the output uses the expected description
+        expect(outputs[domainOutputKey!].Description).toBe('The CloudFront distribution domain name');
     });
 });
 
 describe('OpenWebUIEcsStack Additional Tests', () => {
     let app: App;
-    let stack: OpenWebUIEcsStack;
     let template: Template;
 
     beforeAll(() => {
         app = new App();
-        stack = new OpenWebUIEcsStack(app, 'AdditionalTestStack');
+        const stack = new Stack(app, 'AdditionalTestStack');
+        new OpenWebUIEcsConstruct(stack, 'OpenWebUIEcsConstruct');
         template = Template.fromStack(stack);
     });
 

@@ -1,4 +1,4 @@
-import { Stack, StackProps, RemovalPolicy, CfnOutput } from 'aws-cdk-lib';
+import { RemovalPolicy, CfnOutput } from 'aws-cdk-lib';
 import { PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 import { Vpc, Peer, Port } from 'aws-cdk-lib/aws-ec2';
@@ -12,9 +12,9 @@ import { ListenerAction, ListenerCondition, ApplicationListener, ApplicationLoad
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 // import { CfnWebACL, CfnWebACLAssociation } from 'aws-cdk-lib/aws-wafv2';
 
-export class OpenWebUIEcsStack extends Stack {
-    constructor(scope: Construct, id: string, props?: StackProps) {
-        super(scope, id, props);
+export class OpenWebUIEcsConstruct extends Construct {
+    constructor(scope: Construct, id: string) {
+        super(scope, id);
 
         // -----------------------------
         // VPC, Cluster, and EFS Setup

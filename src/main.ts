@@ -1,12 +1,12 @@
 import { App, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { OpenWebUIEcsStack } from './llm-construct';
+import { OpenWebUIEcsConstruct } from './llm-construct';
 
 export class RudyLLMStack extends Stack {
   constructor(scope: Construct, id: string, props: StackProps = {}) {
     super(scope, id, props);
 
-    new OpenWebUIEcsStack(this, 'OpenWebUIEcsStack');
+    new OpenWebUIEcsConstruct(this, 'OpenWebUIEcsConstruct');
   }
 }
 
