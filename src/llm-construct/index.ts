@@ -5,10 +5,10 @@ import { Vpc, Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, FargateTaskDefinition, ContainerImage, LogDrivers } from 'aws-cdk-lib/aws-ecs';
 import { FileSystem, PerformanceMode } from 'aws-cdk-lib/aws-efs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
-import { Distribution, OriginProtocolPolicy, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
+import { AllowedMethods, CachePolicy, Distribution, OriginProtocolPolicy, OriginRequestPolicy, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
 import { LoadBalancerV2Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { AwsCustomResource, AwsCustomResourcePolicy } from 'aws-cdk-lib/custom-resources';
-import { ListenerAction, ListenerCondition, ApplicationListener } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+// import { ListenerAction, ListenerCondition, ApplicationListener } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 // import { CfnWebACL, CfnWebACLAssociation } from 'aws-cdk-lib/aws-wafv2';
 
@@ -125,12 +125,7 @@ export class OpenWebUIEcsConstruct extends Construct {
         });
         const cfPrefixListId = cfPrefixListResource.getResponseField('PrefixLists.0.PrefixListId');
 
-        const ecsSg = new SecurityGroup(this, 'EcsSecurityGroup', { vpc });
-        // Restrict the ALB's security group to allow inbound traffic only from the CloudFront origin prefix list.
-        ecsSg.connections.allowFrom(
-            Peer.prefixList(cfPrefixListId),
-            Port.tcp(80)
-        )
+        
         
         const openWebUISvc = new ApplicationLoadBalancedFargateService(this, 'OpenWebUISvc', {
             cluster,
@@ -142,21 +137,25 @@ export class OpenWebUIEcsConstruct extends Construct {
             minHealthyPercent: 50, // explicitly set to 50 or a value that fits your deployment needs
         });
 
+        const albSecurityGroup = new SecurityGroup(this, 'AlbSecurityGroup', { vpc, allowAllOutbound: true });
+        albSecurityGroup.addIngressRule(Peer.prefixList(cfPrefixListId), Port.tcp(80), 'Allow CloudFront to access the ALB');
+        openWebUISvc.loadBalancer.addSecurityGroup(albSecurityGroup);
+
 
         // -----------------------------
         // ALB Listener Rule to Require Unique Header
         // -----------------------------
         // Create the listener with a default action for unmatched requests.
-        const listener: ApplicationListener = openWebUISvc.listener;
+        // const listener: ApplicationListener = openWebUISvc.listener;
 
         // Add a high-priority rule that forwards requests when the custom header is present.
-        listener.addAction('AllowValidHeader', {
-            priority: 1,
-            conditions: [
-                ListenerCondition.httpHeader('x-unique-header', ['RUDY-LLM-PRIVATE-LINK']),
-            ],
-            action: ListenerAction.forward([openWebUISvc.targetGroup]),
-        });
+        // listener.addAction('AllowValidHeader', {
+        //     priority: 1,
+        //     conditions: [
+        //         ListenerCondition.httpHeader('x-unique-header', ['RUDY-LLM-PRIVATE-LINK']),
+        //     ],
+        //     action: ListenerAction.forward([openWebUISvc.targetGroup]),
+        // });
 
         // -----------------------------
         // CloudFront Distribution Setup
@@ -164,10 +163,15 @@ export class OpenWebUIEcsConstruct extends Construct {
         // CloudFront adds the custom header to all requests.
         const distribution = new Distribution(this, 'WebUIDistribution', {
             defaultBehavior: {
+                allowedMethods: AllowedMethods.ALLOW_ALL,
                 origin: new LoadBalancerV2Origin(openWebUISvc.loadBalancer, {
-                    protocolPolicy: OriginProtocolPolicy.MATCH_VIEWER,
-                    customHeaders: { 'x-unique-header': 'RUDY-LLM-PRIVATE-LINK' },
+                    protocolPolicy: OriginProtocolPolicy.HTTP_ONLY,
+                    
+                    // customHeaders: { 'x-unique-header': 'RUDY-LLM-PRIVATE-LINK' },
+                    
                 }),
+                originRequestPolicy: OriginRequestPolicy.ALL_VIEWER,
+                cachePolicy: CachePolicy.USE_ORIGIN_CACHE_CONTROL_HEADERS,
                 viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             },
         });
