@@ -9,6 +9,7 @@ import { Distribution, OriginProtocolPolicy, ViewerProtocolPolicy } from 'aws-cd
 import { LoadBalancerV2Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { AwsCustomResource, AwsCustomResourcePolicy } from 'aws-cdk-lib/custom-resources';
 import { ListenerAction, ListenerCondition, ApplicationListener, ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 // import { CfnWebACL, CfnWebACLAssociation } from 'aws-cdk-lib/aws-wafv2';
 
 export class OpenWebUIEcsStack extends Stack {
@@ -49,6 +50,11 @@ export class OpenWebUIEcsStack extends Stack {
             cpu: 512,
             memoryLimitMiB: 2048,
         });
+        taskDefinition.addToTaskRolePolicy(new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ['bedrock:*'],
+            resources: ['*'],
+        }))
 
         taskDefinition.addVolume({
             name: 'openwebuiVolume',
