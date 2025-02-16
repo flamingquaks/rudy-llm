@@ -105,6 +105,7 @@ export class OpenWebUIEcsStack extends Stack {
             publicLoadBalancer: true,
             assignPublicIp: true,
             loadBalancer: alb,
+            minHealthyPercent: 50, // explicitly set to 50 or a value that fits your deployment needs
         });
 
         const cfPrefixListResource = new AwsCustomResource(this, 'CfPrefixListLookup', {
@@ -121,6 +122,7 @@ export class OpenWebUIEcsStack extends Stack {
                 },
                 physicalResourceId: PhysicalResourceId.of('CfPrefixListLookup'),
             },
+            installLatestAwsSdk: false, // explicitly disable installing the latest AWS SDK
             policy: AwsCustomResourcePolicy.fromSdkCalls({
                 resources: AwsCustomResourcePolicy.ANY_RESOURCE,
             }),
