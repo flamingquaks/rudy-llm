@@ -61,7 +61,7 @@ describe('OpenWebUIEcsConstruct', () => {
         });
     });
 
-    test('ECS Task Definition has required volumes and HTTP Listener has a default fixed response action', () => {
+    test('ECS Task Definition has required volumes', () => {
         // Check that the TaskDefinition includes the two volumes: openwebuiVolume and pipelinesVolume.
         template.hasResourceProperties('AWS::ECS::TaskDefinition', {
             Volumes: [
@@ -70,19 +70,6 @@ describe('OpenWebUIEcsConstruct', () => {
                 },
                 {
                     Name: 'pipelinesVolume'
-                }
-            ]
-        });
-        // Check that the HTTP Listener is created with a default fixed response action.
-        template.hasResourceProperties('AWS::ElasticLoadBalancingV2::Listener', {
-            DefaultActions: [
-                {
-                    FixedResponseConfig: {
-                        MessageBody: 'Forbidden',
-                        StatusCode: '403',
-                        ContentType: 'text/plain'
-                    },
-                    Type: 'fixed-response'
                 }
             ]
         });

@@ -8,7 +8,7 @@ import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patte
 import { Distribution, OriginProtocolPolicy, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
 import { LoadBalancerV2Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { AwsCustomResource, AwsCustomResourcePolicy } from 'aws-cdk-lib/custom-resources';
-import { ListenerAction, ListenerCondition, ApplicationListener, ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { ListenerAction, ListenerCondition, ApplicationListener } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 // import { CfnWebACL, CfnWebACLAssociation } from 'aws-cdk-lib/aws-wafv2';
 
@@ -131,21 +131,14 @@ export class OpenWebUIEcsConstruct extends Construct {
             Peer.prefixList(cfPrefixListId),
             Port.tcp(80)
         )
-        const immutableSg = SecurityGroup.fromSecurityGroupId(this, 'ImmutableSecurityGroup', ecsSg.securityGroupId, {
-            mutable: false,
-        })
         
-
-        const alb = new ApplicationLoadBalancer(this, 'OpenWebUIALB', { vpc, internetFacing: true,
-            securityGroup: immutableSg
-         });
         const openWebUISvc = new ApplicationLoadBalancedFargateService(this, 'OpenWebUISvc', {
             cluster,
+            openListener: false,
             taskDefinition,
             desiredCount: 1,
             publicLoadBalancer: true,
             assignPublicIp: true,
-            loadBalancer: alb,
             minHealthyPercent: 50, // explicitly set to 50 or a value that fits your deployment needs
         });
 
@@ -154,14 +147,7 @@ export class OpenWebUIEcsConstruct extends Construct {
         // ALB Listener Rule to Require Unique Header
         // -----------------------------
         // Create the listener with a default action for unmatched requests.
-        const listener: ApplicationListener = new ApplicationListener(this, 'HTTPListener', {
-            loadBalancer: openWebUISvc.loadBalancer,
-            port: 80,
-            defaultAction: ListenerAction.fixedResponse(403, {
-                messageBody: 'Forbidden',
-                contentType: 'text/plain',
-            }),
-        });
+        const listener: ApplicationListener = openWebUISvc.listener;
 
         // Add a high-priority rule that forwards requests when the custom header is present.
         listener.addAction('AllowValidHeader', {

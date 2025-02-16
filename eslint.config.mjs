@@ -9,4 +9,7 @@ export default [
   {languageOptions: { globals: globals.node }},
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    ignores: ["node_modules/", "dist/", "cdk.out/"]
+  }
 ];

@@ -139,7 +139,7 @@ exports[`RudyLLMStack Snapshot 1`] = `
     "OpenWebUIEcsConstructOpenWebUISvcLoadBalancerDNS30D14397": {
       "Value": {
         "Fn::GetAtt": [
-          "OpenWebUIEcsConstructOpenWebUIALB51A0EC30",
+          "OpenWebUIEcsConstructOpenWebUISvcLB8D0589D5",
           "DNSName",
         ],
       },
@@ -152,7 +152,7 @@ exports[`RudyLLMStack Snapshot 1`] = `
             "http://",
             {
               "Fn::GetAtt": [
-                "OpenWebUIEcsConstructOpenWebUIALB51A0EC30",
+                "OpenWebUIEcsConstructOpenWebUISvcLB8D0589D5",
                 "DNSName",
               ],
             },
@@ -270,6 +270,57 @@ exports[`RudyLLMStack Snapshot 1`] = `
         ],
       },
       "Type": "AWS::IAM::Policy",
+    },
+    "OpenWebUIEcsConstructEcsSecurityGroup46F6AB0B": {
+      "Properties": {
+        "GroupDescription": "TestRudyLLMStack/OpenWebUIEcsConstruct/EcsSecurityGroup",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1",
+          },
+        ],
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::EC2::SecurityGroup",
+    },
+    "OpenWebUIEcsConstructEcsSecurityGroupfromIndirectPeer80BD97C2E4": {
+      "Properties": {
+        "Description": {
+          "Fn::Join": [
+            "",
+            [
+              "from ",
+              {
+                "Fn::GetAtt": [
+                  "OpenWebUIEcsConstructCfPrefixListLookupB606F6F7",
+                  "PrefixLists.0.PrefixListId",
+                ],
+              },
+              ":80",
+            ],
+          ],
+        },
+        "FromPort": 80,
+        "GroupId": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructEcsSecurityGroup46F6AB0B",
+            "GroupId",
+          ],
+        },
+        "IpProtocol": "tcp",
+        "SourcePrefixListId": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructCfPrefixListLookupB606F6F7",
+            "PrefixLists.0.PrefixListId",
+          ],
+        },
+        "ToPort": 80,
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress",
     },
     "OpenWebUIEcsConstructEfsFileSystem046FFDDD": {
       "DeletionPolicy": "Delete",
@@ -412,55 +463,10 @@ exports[`RudyLLMStack Snapshot 1`] = `
       },
       "Type": "AWS::EFS::AccessPoint",
     },
-    "OpenWebUIEcsConstructHTTPListenerAllowValidHeaderRuleEF3A8E12": {
-      "Properties": {
-        "Actions": [
-          {
-            "TargetGroupArn": {
-              "Ref": "OpenWebUIEcsConstructOpenWebUIALBPublicListenerECSGroup08AE602A",
-            },
-            "Type": "forward",
-          },
-        ],
-        "Conditions": [
-          {
-            "Field": "http-header",
-            "HttpHeaderConfig": {
-              "HttpHeaderName": "x-unique-header",
-              "Values": [
-                "RUDY-LLM-PRIVATE-LINK",
-              ],
-            },
-          },
-        ],
-        "ListenerArn": {
-          "Ref": "OpenWebUIEcsConstructHTTPListenerBDFBDBFE",
-        },
-        "Priority": 1,
-      },
-      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+    "OpenWebUIEcsConstructOpenWebUICluster07E729DC": {
+      "Type": "AWS::ECS::Cluster",
     },
-    "OpenWebUIEcsConstructHTTPListenerBDFBDBFE": {
-      "Properties": {
-        "DefaultActions": [
-          {
-            "FixedResponseConfig": {
-              "ContentType": "text/plain",
-              "MessageBody": "Forbidden",
-              "StatusCode": "403",
-            },
-            "Type": "fixed-response",
-          },
-        ],
-        "LoadBalancerArn": {
-          "Ref": "OpenWebUIEcsConstructOpenWebUIALB51A0EC30",
-        },
-        "Port": 80,
-        "Protocol": "HTTP",
-      },
-      "Type": "AWS::ElasticLoadBalancingV2::Listener",
-    },
-    "OpenWebUIEcsConstructOpenWebUIALB51A0EC30": {
+    "OpenWebUIEcsConstructOpenWebUISvcLB8D0589D5": {
       "DependsOn": [
         "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1DefaultRoute87FEA455",
         "OpenWebUIEcsConstructOpenWebUIVpcPublicSubnet1RouteTableAssociation30EADA76",
@@ -478,7 +484,7 @@ exports[`RudyLLMStack Snapshot 1`] = `
         "SecurityGroups": [
           {
             "Fn::GetAtt": [
-              "OpenWebUIEcsConstructOpenWebUIALBSecurityGroup7BE1F221",
+              "OpenWebUIEcsConstructOpenWebUISvcLBSecurityGroup45584B63",
               "GroupId",
             ],
           },
@@ -495,25 +501,53 @@ exports[`RudyLLMStack Snapshot 1`] = `
       },
       "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
     },
-    "OpenWebUIEcsConstructOpenWebUIALBPublicListenerE5EE8D3F": {
+    "OpenWebUIEcsConstructOpenWebUISvcLBPublicListenerA11BC1EE": {
       "Properties": {
         "DefaultActions": [
           {
             "TargetGroupArn": {
-              "Ref": "OpenWebUIEcsConstructOpenWebUIALBPublicListenerECSGroup08AE602A",
+              "Ref": "OpenWebUIEcsConstructOpenWebUISvcLBPublicListenerECSGroupB3F91566",
             },
             "Type": "forward",
           },
         ],
         "LoadBalancerArn": {
-          "Ref": "OpenWebUIEcsConstructOpenWebUIALB51A0EC30",
+          "Ref": "OpenWebUIEcsConstructOpenWebUISvcLB8D0589D5",
         },
         "Port": 80,
         "Protocol": "HTTP",
       },
       "Type": "AWS::ElasticLoadBalancingV2::Listener",
     },
-    "OpenWebUIEcsConstructOpenWebUIALBPublicListenerECSGroup08AE602A": {
+    "OpenWebUIEcsConstructOpenWebUISvcLBPublicListenerAllowValidHeaderRuleDA88159B": {
+      "Properties": {
+        "Actions": [
+          {
+            "TargetGroupArn": {
+              "Ref": "OpenWebUIEcsConstructOpenWebUISvcLBPublicListenerECSGroupB3F91566",
+            },
+            "Type": "forward",
+          },
+        ],
+        "Conditions": [
+          {
+            "Field": "http-header",
+            "HttpHeaderConfig": {
+              "HttpHeaderName": "x-unique-header",
+              "Values": [
+                "RUDY-LLM-PRIVATE-LINK",
+              ],
+            },
+          },
+        ],
+        "ListenerArn": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUISvcLBPublicListenerA11BC1EE",
+        },
+        "Priority": 1,
+      },
+      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+    },
+    "OpenWebUIEcsConstructOpenWebUISvcLBPublicListenerECSGroupB3F91566": {
       "Properties": {
         "Port": 80,
         "Protocol": "HTTP",
@@ -530,60 +564,16 @@ exports[`RudyLLMStack Snapshot 1`] = `
       },
       "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
     },
-    "OpenWebUIEcsConstructOpenWebUIALBSecurityGroup7BE1F221": {
+    "OpenWebUIEcsConstructOpenWebUISvcLBSecurityGroup45584B63": {
       "Properties": {
-        "GroupDescription": "Automatically created Security Group for ELB TestRudyLLMStackOpenWebUIEcsConstructOpenWebUIALB07E92149",
-        "SecurityGroupIngress": [
-          {
-            "CidrIp": "0.0.0.0/0",
-            "Description": "Allow from anyone on port 80",
-            "FromPort": 80,
-            "IpProtocol": "tcp",
-            "ToPort": 80,
-          },
-        ],
+        "GroupDescription": "Automatically created Security Group for ELB TestRudyLLMStackOpenWebUIEcsConstructOpenWebUISvcLB5693EA86",
         "VpcId": {
           "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
         },
       },
       "Type": "AWS::EC2::SecurityGroup",
     },
-    "OpenWebUIEcsConstructOpenWebUIALBSecurityGroupfromIndirectPeer30002614FFEC": {
-      "Properties": {
-        "Description": {
-          "Fn::Join": [
-            "",
-            [
-              "from ",
-              {
-                "Fn::GetAtt": [
-                  "OpenWebUIEcsConstructCfPrefixListLookupB606F6F7",
-                  "PrefixLists.0.PrefixListId",
-                ],
-              },
-              ":3000",
-            ],
-          ],
-        },
-        "FromPort": 3000,
-        "GroupId": {
-          "Fn::GetAtt": [
-            "OpenWebUIEcsConstructOpenWebUIALBSecurityGroup7BE1F221",
-            "GroupId",
-          ],
-        },
-        "IpProtocol": "tcp",
-        "SourcePrefixListId": {
-          "Fn::GetAtt": [
-            "OpenWebUIEcsConstructCfPrefixListLookupB606F6F7",
-            "PrefixLists.0.PrefixListId",
-          ],
-        },
-        "ToPort": 3000,
-      },
-      "Type": "AWS::EC2::SecurityGroupIngress",
-    },
-    "OpenWebUIEcsConstructOpenWebUIALBSecurityGrouptoTestRudyLLMStackOpenWebUIEcsConstructOpenWebUISvcServiceSecurityGroup5B1517108080E6C28BA1": {
+    "OpenWebUIEcsConstructOpenWebUISvcLBSecurityGrouptoTestRudyLLMStackOpenWebUIEcsConstructOpenWebUISvcServiceSecurityGroup5B15171080803C001DF6": {
       "Properties": {
         "Description": "Load balancer to target",
         "DestinationSecurityGroupId": {
@@ -595,7 +585,7 @@ exports[`RudyLLMStack Snapshot 1`] = `
         "FromPort": 8080,
         "GroupId": {
           "Fn::GetAtt": [
-            "OpenWebUIEcsConstructOpenWebUIALBSecurityGroup7BE1F221",
+            "OpenWebUIEcsConstructOpenWebUISvcLBSecurityGroup45584B63",
             "GroupId",
           ],
         },
@@ -604,14 +594,11 @@ exports[`RudyLLMStack Snapshot 1`] = `
       },
       "Type": "AWS::EC2::SecurityGroupEgress",
     },
-    "OpenWebUIEcsConstructOpenWebUICluster07E729DC": {
-      "Type": "AWS::ECS::Cluster",
-    },
     "OpenWebUIEcsConstructOpenWebUISvcServiceF26E7F2A": {
       "DependsOn": [
-        "OpenWebUIEcsConstructHTTPListenerAllowValidHeaderRuleEF3A8E12",
-        "OpenWebUIEcsConstructOpenWebUIALBPublicListenerECSGroup08AE602A",
-        "OpenWebUIEcsConstructOpenWebUIALBPublicListenerE5EE8D3F",
+        "OpenWebUIEcsConstructOpenWebUISvcLBPublicListenerAllowValidHeaderRuleDA88159B",
+        "OpenWebUIEcsConstructOpenWebUISvcLBPublicListenerECSGroupB3F91566",
+        "OpenWebUIEcsConstructOpenWebUISvcLBPublicListenerA11BC1EE",
         "OpenWebUIEcsConstructOpenWebUITaskDefTaskRoleDefaultPolicyD6270A33",
         "OpenWebUIEcsConstructOpenWebUITaskDefTaskRole756CEA41",
       ],
@@ -637,7 +624,7 @@ exports[`RudyLLMStack Snapshot 1`] = `
             "ContainerName": "openwebui",
             "ContainerPort": 8080,
             "TargetGroupArn": {
-              "Ref": "OpenWebUIEcsConstructOpenWebUIALBPublicListenerECSGroup08AE602A",
+              "Ref": "OpenWebUIEcsConstructOpenWebUISvcLBPublicListenerECSGroupB3F91566",
             },
           },
         ],
@@ -688,7 +675,7 @@ exports[`RudyLLMStack Snapshot 1`] = `
       },
       "Type": "AWS::EC2::SecurityGroup",
     },
-    "OpenWebUIEcsConstructOpenWebUISvcServiceSecurityGroupfromTestRudyLLMStackOpenWebUIEcsConstructOpenWebUIALBSecurityGroupBA7DAB08808025B64943": {
+    "OpenWebUIEcsConstructOpenWebUISvcServiceSecurityGroupfromTestRudyLLMStackOpenWebUIEcsConstructOpenWebUISvcLBSecurityGroup2569484E80806171B0E7": {
       "DependsOn": [
         "OpenWebUIEcsConstructOpenWebUITaskDefTaskRoleDefaultPolicyD6270A33",
         "OpenWebUIEcsConstructOpenWebUITaskDefTaskRole756CEA41",
@@ -705,7 +692,7 @@ exports[`RudyLLMStack Snapshot 1`] = `
         "IpProtocol": "tcp",
         "SourceSecurityGroupId": {
           "Fn::GetAtt": [
-            "OpenWebUIEcsConstructOpenWebUIALBSecurityGroup7BE1F221",
+            "OpenWebUIEcsConstructOpenWebUISvcLBSecurityGroup45584B63",
             "GroupId",
           ],
         },
@@ -777,7 +764,7 @@ exports[`RudyLLMStack Snapshot 1`] = `
             "Name": "pipelines",
           },
         ],
-        "Cpu": "512",
+        "Cpu": "4096",
         "ExecutionRoleArn": {
           "Fn::GetAtt": [
             "OpenWebUIEcsConstructOpenWebUITaskDefExecutionRole89DDA979",
@@ -785,7 +772,7 @@ exports[`RudyLLMStack Snapshot 1`] = `
           ],
         },
         "Family": "TestRudyLLMStackOpenWebUIEcsConstructOpenWebUITaskDef1A7587C4",
-        "Memory": "2048",
+        "Memory": "8192",
         "NetworkMode": "awsvpc",
         "RequiresCompatibilities": [
           "FARGATE",
@@ -1351,7 +1338,7 @@ exports[`RudyLLMStack Snapshot 1`] = `
               },
               "DomainName": {
                 "Fn::GetAtt": [
-                  "OpenWebUIEcsConstructOpenWebUIALB51A0EC30",
+                  "OpenWebUIEcsConstructOpenWebUISvcLB8D0589D5",
                   "DNSName",
                 ],
               },
