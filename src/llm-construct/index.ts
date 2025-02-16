@@ -1,7 +1,7 @@
 import { RemovalPolicy, CfnOutput } from 'aws-cdk-lib';
 import { PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
-import { Vpc, Peer, Port } from 'aws-cdk-lib/aws-ec2';
+import { Vpc, Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, FargateTaskDefinition, ContainerImage, LogDrivers } from 'aws-cdk-lib/aws-ecs';
 import { FileSystem, PerformanceMode } from 'aws-cdk-lib/aws-efs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
@@ -47,8 +47,8 @@ export class OpenWebUIEcsConstruct extends Construct {
         // ECS Task Definition and Containers
         // -----------------------------
         const taskDefinition = new FargateTaskDefinition(this, 'OpenWebUITaskDef', {
-            cpu: 512,
-            memoryLimitMiB: 2048,
+            cpu: 4096,
+            memoryLimitMiB: 8192,
         });
         taskDefinition.addToTaskRolePolicy(new PolicyStatement({
             effect: Effect.ALLOW,
@@ -103,16 +103,6 @@ export class OpenWebUIEcsConstruct extends Construct {
         // -----------------------------
         // ALB Service and Security Group Restriction
         // -----------------------------
-        const alb = new ApplicationLoadBalancer(this, 'OpenWebUIALB', { vpc, internetFacing: true });
-        const openWebUISvc = new ApplicationLoadBalancedFargateService(this, 'OpenWebUISvc', {
-            cluster,
-            taskDefinition,
-            desiredCount: 1,
-            publicLoadBalancer: true,
-            assignPublicIp: true,
-            loadBalancer: alb,
-            minHealthyPercent: 50, // explicitly set to 50 or a value that fits your deployment needs
-        });
 
         const cfPrefixListResource = new AwsCustomResource(this, 'CfPrefixListLookup', {
             onUpdate: {
@@ -135,11 +125,30 @@ export class OpenWebUIEcsConstruct extends Construct {
         });
         const cfPrefixListId = cfPrefixListResource.getResponseField('PrefixLists.0.PrefixListId');
 
+        const ecsSg = new SecurityGroup(this, 'EcsSecurityGroup', { vpc });
         // Restrict the ALB's security group to allow inbound traffic only from the CloudFront origin prefix list.
-        openWebUISvc.loadBalancer.connections.allowFrom(
+        ecsSg.connections.allowFrom(
             Peer.prefixList(cfPrefixListId),
-            Port.tcp(3000)
-        );
+            Port.tcp(80)
+        )
+        const immutableSg = SecurityGroup.fromSecurityGroupId(this, 'ImmutableSecurityGroup', ecsSg.securityGroupId, {
+            mutable: false,
+        })
+        
+
+        const alb = new ApplicationLoadBalancer(this, 'OpenWebUIALB', { vpc, internetFacing: true,
+            securityGroup: immutableSg
+         });
+        const openWebUISvc = new ApplicationLoadBalancedFargateService(this, 'OpenWebUISvc', {
+            cluster,
+            taskDefinition,
+            desiredCount: 1,
+            publicLoadBalancer: true,
+            assignPublicIp: true,
+            loadBalancer: alb,
+            minHealthyPercent: 50, // explicitly set to 50 or a value that fits your deployment needs
+        });
+
 
         // -----------------------------
         // ALB Listener Rule to Require Unique Header
