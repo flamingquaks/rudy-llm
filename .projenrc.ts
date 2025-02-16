@@ -1,7 +1,7 @@
 import { awscdk } from "projen";
 import { NodePackageManager } from "projen/lib/javascript";
 const project = new awscdk.AwsCdkTypeScriptApp({
-  cdkVersion: "2.1.0",
+  cdkVersion: "2.178.2",
   defaultReleaseBranch: "main",
   name: "rudy-llm",
   projenrcTs: true,
