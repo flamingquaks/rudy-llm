@@ -201,13 +201,13 @@
       },
       "steps": [
         {
-          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@eslint/js,@types/jest,@types/node,esbuild,eslint,globals,jest,projen,ts-jest,ts-node,typescript,typescript-eslint"
+          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@eslint/js,@types/jest,@types/node,esbuild,eslint,globals,jest,projen,ts-jest,ts-node,typescript,typescript-eslint,uuid"
         },
         {
           "exec": "npm install"
         },
         {
-          "exec": "npm update @eslint/js @types/jest @types/node aws-cdk esbuild eslint globals jest projen ts-jest ts-node typescript typescript-eslint aws-cdk-lib constructs"
+          "exec": "npm update @eslint/js @types/jest @types/node aws-cdk esbuild eslint globals jest projen ts-jest ts-node typescript typescript-eslint aws-cdk-lib constructs uuid"
         },
         {
           "exec": "npx projen"

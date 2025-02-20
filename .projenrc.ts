@@ -8,7 +8,11 @@ const project = new awscdk.AwsCdkTypeScriptApp({
   eslint: false,
   jest: false,
   packageManager: NodePackageManager.NPM,
+  gitignore: [
+    '.aider*'
+  ],
   deps: [
+    "uuid",
   ],
   devDeps: [
     "eslint",

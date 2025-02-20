@@ -231,6 +231,43 @@ exports[`RudyLLMStack Snapshot 1`] = `
       },
       "Type": "AWS::IAM::Role",
     },
+    "OpenWebUIEcsConstructAlbSecurityGroupADF01D84": {
+      "Properties": {
+        "GroupDescription": "TestRudyLLMStack/OpenWebUIEcsConstruct/AlbSecurityGroup",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1",
+          },
+        ],
+        "VpcId": {
+          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
+        },
+      },
+      "Type": "AWS::EC2::SecurityGroup",
+    },
+    "OpenWebUIEcsConstructAlbSecurityGroupfromIndirectPeer80F611B3D3": {
+      "Properties": {
+        "Description": "Allow CloudFront to access the ALB",
+        "FromPort": 80,
+        "GroupId": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructAlbSecurityGroupADF01D84",
+            "GroupId",
+          ],
+        },
+        "IpProtocol": "tcp",
+        "SourcePrefixListId": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructCfPrefixListLookupB606F6F7",
+            "PrefixLists.0.PrefixListId",
+          ],
+        },
+        "ToPort": 80,
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress",
+    },
     "OpenWebUIEcsConstructCfPrefixListLookupB606F6F7": {
       "DeletionPolicy": "Delete",
       "DependsOn": [
@@ -270,57 +307,6 @@ exports[`RudyLLMStack Snapshot 1`] = `
         ],
       },
       "Type": "AWS::IAM::Policy",
-    },
-    "OpenWebUIEcsConstructEcsSecurityGroup46F6AB0B": {
-      "Properties": {
-        "GroupDescription": "TestRudyLLMStack/OpenWebUIEcsConstruct/EcsSecurityGroup",
-        "SecurityGroupEgress": [
-          {
-            "CidrIp": "0.0.0.0/0",
-            "Description": "Allow all outbound traffic by default",
-            "IpProtocol": "-1",
-          },
-        ],
-        "VpcId": {
-          "Ref": "OpenWebUIEcsConstructOpenWebUIVpc7274DD13",
-        },
-      },
-      "Type": "AWS::EC2::SecurityGroup",
-    },
-    "OpenWebUIEcsConstructEcsSecurityGroupfromIndirectPeer80BD97C2E4": {
-      "Properties": {
-        "Description": {
-          "Fn::Join": [
-            "",
-            [
-              "from ",
-              {
-                "Fn::GetAtt": [
-                  "OpenWebUIEcsConstructCfPrefixListLookupB606F6F7",
-                  "PrefixLists.0.PrefixListId",
-                ],
-              },
-              ":80",
-            ],
-          ],
-        },
-        "FromPort": 80,
-        "GroupId": {
-          "Fn::GetAtt": [
-            "OpenWebUIEcsConstructEcsSecurityGroup46F6AB0B",
-            "GroupId",
-          ],
-        },
-        "IpProtocol": "tcp",
-        "SourcePrefixListId": {
-          "Fn::GetAtt": [
-            "OpenWebUIEcsConstructCfPrefixListLookupB606F6F7",
-            "PrefixLists.0.PrefixListId",
-          ],
-        },
-        "ToPort": 80,
-      },
-      "Type": "AWS::EC2::SecurityGroupIngress",
     },
     "OpenWebUIEcsConstructEfsFileSystem046FFDDD": {
       "DeletionPolicy": "Delete",
@@ -485,6 +471,12 @@ exports[`RudyLLMStack Snapshot 1`] = `
           {
             "Fn::GetAtt": [
               "OpenWebUIEcsConstructOpenWebUISvcLBSecurityGroup45584B63",
+              "GroupId",
+            ],
+          },
+          {
+            "Fn::GetAtt": [
+              "OpenWebUIEcsConstructAlbSecurityGroupADF01D84",
               "GroupId",
             ],
           },
@@ -674,6 +666,31 @@ exports[`RudyLLMStack Snapshot 1`] = `
         },
       },
       "Type": "AWS::EC2::SecurityGroup",
+    },
+    "OpenWebUIEcsConstructOpenWebUISvcServiceSecurityGroupfromTestRudyLLMStackOpenWebUIEcsConstructAlbSecurityGroupDEC1AAD5808029D3CA69": {
+      "DependsOn": [
+        "OpenWebUIEcsConstructOpenWebUITaskDefTaskRoleDefaultPolicyD6270A33",
+        "OpenWebUIEcsConstructOpenWebUITaskDefTaskRole756CEA41",
+      ],
+      "Properties": {
+        "Description": "Load balancer to target",
+        "FromPort": 8080,
+        "GroupId": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructOpenWebUISvcServiceSecurityGroup6EAF91CC",
+            "GroupId",
+          ],
+        },
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "OpenWebUIEcsConstructAlbSecurityGroupADF01D84",
+            "GroupId",
+          ],
+        },
+        "ToPort": 8080,
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress",
     },
     "OpenWebUIEcsConstructOpenWebUISvcServiceSecurityGroupfromTestRudyLLMStackOpenWebUIEcsConstructOpenWebUISvcLBSecurityGroup2569484E80806171B0E7": {
       "DependsOn": [

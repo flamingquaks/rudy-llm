@@ -1,35 +1,46 @@
+
 import { RemovalPolicy, CfnOutput } from 'aws-cdk-lib';
 import { PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
-import { Vpc, Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { Cluster, FargateTaskDefinition, ContainerImage, LogDrivers } from 'aws-cdk-lib/aws-ecs';
+import { Vpc, Peer, Port, SecurityGroup, SubnetType } from 'aws-cdk-lib/aws-ec2';
+import { Cluster, FargateTaskDefinition, ContainerImage, LogDrivers, Secret as ECSSecret, FargateService } from 'aws-cdk-lib/aws-ecs';
 import { FileSystem, PerformanceMode } from 'aws-cdk-lib/aws-efs';
-import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
 import { AllowedMethods, CachePolicy, Distribution, OriginProtocolPolicy, OriginRequestPolicy, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
 import { LoadBalancerV2Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { AwsCustomResource, AwsCustomResourcePolicy } from 'aws-cdk-lib/custom-resources';
-// import { ListenerAction, ListenerCondition, ApplicationListener } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-// import { CfnWebACL, CfnWebACLAssociation } from 'aws-cdk-lib/aws-wafv2';
+import { ApplicationLoadBalancer, ApplicationProtocol, ApplicationTargetGroup, TargetType } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 
 export class OpenWebUIEcsConstruct extends Construct {
     constructor(scope: Construct, id: string) {
         super(scope, id);
 
-        // -----------------------------
-        // VPC, Cluster, and EFS Setup
-        // -----------------------------
+
+        // API Key Secret
+        const apiKeySecret = new Secret(this, 'APIKeySecret', {
+            generateSecretString: {
+                secretStringTemplate: JSON.stringify({
+                    "apiKey": "REPLACE_ME"
+                }),
+                generateStringKey: 'apiKey',
+                excludePunctuation: true,
+                includeSpace: false,
+            },
+        });
+
+        // VPC and Cluster
         const vpc = new Vpc(this, 'OpenWebUIVpc', { maxAzs: 2 });
         const cluster = new Cluster(this, 'OpenWebUICluster', { vpc });
 
+        // EFS Setup
         const fileSystem = new FileSystem(this, 'EfsFileSystem', {
             vpc,
-            removalPolicy: RemovalPolicy.DESTROY, // Adjust for production
+            removalPolicy: RemovalPolicy.DESTROY,
             performanceMode: PerformanceMode.GENERAL_PURPOSE,
         });
 
-        // Allow EFS access from within the VPC.
-        fileSystem.connections.allowDefaultPortFrom(Peer.ipv4(vpc.vpcCidrBlock), 'Allow ECS tasks access to EFS');
+        fileSystem.connections.allowDefaultPortFrom(Peer.ipv4(vpc.vpcCidrBlock));
 
         const openWebUIAccessPoint = fileSystem.addAccessPoint('OpenWebUIAccessPoint', {
             path: '/openwebui',
@@ -43,18 +54,17 @@ export class OpenWebUIEcsConstruct extends Construct {
             posixUser: { uid: '1000', gid: '1000' },
         });
 
-        // -----------------------------
-        // ECS Task Definition and Containers
-        // -----------------------------
+        // Task Definition
         const taskDefinition = new FargateTaskDefinition(this, 'OpenWebUITaskDef', {
             cpu: 4096,
             memoryLimitMiB: 8192,
         });
+
         taskDefinition.addToTaskRolePolicy(new PolicyStatement({
             effect: Effect.ALLOW,
             actions: ['bedrock:*'],
             resources: ['*'],
-        }))
+        }));
 
         taskDefinition.addVolume({
             name: 'openwebuiVolume',
@@ -74,13 +84,18 @@ export class OpenWebUIEcsConstruct extends Construct {
             },
         });
 
-        // Open WebUI container (exposed externally)
+        // Containers
         const openWebUIContainer = taskDefinition.addContainer('openwebui', {
             image: ContainerImage.fromRegistry('ghcr.io/open-webui/open-webui:main'),
             logging: LogDrivers.awsLogs({ streamPrefix: 'openwebui' }),
             environment: {
                 DATA_DIR: '/app/backend/data',
+                PIPELINES_SERVICE_URL: 'http://localhost:9099',
             },
+            secrets: {
+                PIPELINES_API_KEY: ECSSecret.fromSecretsManager(apiKeySecret, 'apiKey'),
+            },
+            essential: true,
         });
         openWebUIContainer.addPortMappings({ containerPort: 8080 });
         openWebUIContainer.addMountPoints({
@@ -89,21 +104,22 @@ export class OpenWebUIEcsConstruct extends Construct {
             readOnly: false,
         });
 
-        // Pipelines container (internal only)
         const pipelinesContainer = taskDefinition.addContainer('pipelines', {
             image: ContainerImage.fromRegistry('ghcr.io/open-webui/pipelines:main'),
             logging: LogDrivers.awsLogs({ streamPrefix: 'pipelines' }),
+            secrets: {
+                PIPELINES_API_KEY: ECSSecret.fromSecretsManager(apiKeySecret, 'apiKey'),
+            },
+            essential: true
         });
+        pipelinesContainer.addPortMappings({ containerPort: 9099 });
         pipelinesContainer.addMountPoints({
             containerPath: '/app/pipelines',
             sourceVolume: 'pipelinesVolume',
             readOnly: false,
         });
 
-        // -----------------------------
-        // ALB Service and Security Group Restriction
-        // -----------------------------
-
+        // CloudFront Prefix List Lookup
         const cfPrefixListResource = new AwsCustomResource(this, 'CfPrefixListLookup', {
             onUpdate: {
                 service: 'EC2',
@@ -118,57 +134,101 @@ export class OpenWebUIEcsConstruct extends Construct {
                 },
                 physicalResourceId: PhysicalResourceId.of('CfPrefixListLookup'),
             },
-            installLatestAwsSdk: false, // explicitly disable installing the latest AWS SDK
+            installLatestAwsSdk: false,
             policy: AwsCustomResourcePolicy.fromSdkCalls({
                 resources: AwsCustomResourcePolicy.ANY_RESOURCE,
             }),
         });
         const cfPrefixListId = cfPrefixListResource.getResponseField('PrefixLists.0.PrefixListId');
 
-        
-        
-        const openWebUISvc = new ApplicationLoadBalancedFargateService(this, 'OpenWebUISvc', {
+        // Security Groups
+        const serviceSG = new SecurityGroup(this, 'ServiceSG', { vpc });
+        const openWebUIAlbSG = new SecurityGroup(this, 'OpenWebUIAlbSG', { vpc });
+        const pipelinesAlbSG = new SecurityGroup(this, 'PipelinesAlbSG', { vpc });
+
+        // Allow ALB to access service
+        serviceSG.connections.allowFrom(openWebUIAlbSG, Port.tcp(8080));
+        serviceSG.connections.allowFrom(pipelinesAlbSG, Port.tcp(9099));
+
+        // Allow CloudFront to access ALBs
+        openWebUIAlbSG.addIngressRule(Peer.prefixList(cfPrefixListId), Port.tcp(80));
+        pipelinesAlbSG.addIngressRule(Peer.prefixList(cfPrefixListId), Port.tcp(80));
+
+        // Fargate Service
+        const fargateService = new FargateService(this, 'OpenWebUIService', {
             cluster,
-            openListener: false,
             taskDefinition,
-            desiredCount: 1,
-            publicLoadBalancer: true,
+            securityGroups: [serviceSG],
+            vpcSubnets: { subnetType: SubnetType.PUBLIC },
             assignPublicIp: true,
-            minHealthyPercent: 50, // explicitly set to 50 or a value that fits your deployment needs
+            desiredCount: 1,
+            minHealthyPercent: 50,
         });
 
-        const albSecurityGroup = new SecurityGroup(this, 'AlbSecurityGroup', { vpc, allowAllOutbound: true });
-        albSecurityGroup.addIngressRule(Peer.prefixList(cfPrefixListId), Port.tcp(80), 'Allow CloudFront to access the ALB');
-        openWebUISvc.loadBalancer.addSecurityGroup(albSecurityGroup);
+        // Load Balancers
+        const openWebUIAlb = new ApplicationLoadBalancer(this, 'OpenWebUIAlb', {
+            vpc,
+            internetFacing: true,
+            securityGroup: openWebUIAlbSG,
+        });
+
+        const pipelinesAlb = new ApplicationLoadBalancer(this, 'PipelinesAlb', {
+            vpc,
+            internetFacing: true,
+            securityGroup: pipelinesAlbSG,
+        });
+
+        // Target Groups
+        const openWebUITargetGroup = new ApplicationTargetGroup(this, 'OpenWebUITargetGroup', {
+            vpc,
+            port: 8080,
+            protocol: ApplicationProtocol.HTTP,
+            targetType: TargetType.IP,
+            healthCheck: {
+                path: '/',
+                healthyHttpCodes: '200',
+            },
+        });
+        openWebUITargetGroup.addTarget(fargateService.loadBalancerTarget({
+            containerName: 'openwebui',
+            containerPort: 8080
+        }));
+
+        const pipelinesTargetGroup = new ApplicationTargetGroup(this, 'PipelinesTargetGroup', {
+            vpc,
+            port: 9099,
+            protocol: ApplicationProtocol.HTTP,
+            targetType: TargetType.IP,
+            healthCheck: {
+                path: '/',
+                healthyHttpCodes: '200',
+            },
+        });
+        pipelinesTargetGroup.addTarget(fargateService.loadBalancerTarget({
+            containerName: 'pipelines',
+            containerPort: 9099
+        }));
 
 
-        // -----------------------------
-        // ALB Listener Rule to Require Unique Header
-        // -----------------------------
-        // Create the listener with a default action for unmatched requests.
-        // const listener: ApplicationListener = openWebUISvc.listener;
+        // ALB Listeners
+        openWebUIAlb.addListener('OpenWebUIListener', {
+            port: 80,
+            protocol: ApplicationProtocol.HTTP,
+            defaultTargetGroups: [openWebUITargetGroup],
+        });
 
-        // Add a high-priority rule that forwards requests when the custom header is present.
-        // listener.addAction('AllowValidHeader', {
-        //     priority: 1,
-        //     conditions: [
-        //         ListenerCondition.httpHeader('x-unique-header', ['RUDY-LLM-PRIVATE-LINK']),
-        //     ],
-        //     action: ListenerAction.forward([openWebUISvc.targetGroup]),
-        // });
+        pipelinesAlb.addListener('PipelinesListener', {
+            port: 80,
+            protocol: ApplicationProtocol.HTTP,
+            defaultTargetGroups: [pipelinesTargetGroup],
+        });
 
-        // -----------------------------
-        // CloudFront Distribution Setup
-        // -----------------------------
-        // CloudFront adds the custom header to all requests.
-        const distribution = new Distribution(this, 'WebUIDistribution', {
+        // CloudFront Distributions
+        const openwebuiDistribution = new Distribution(this, 'WebUIDistribution', {
             defaultBehavior: {
                 allowedMethods: AllowedMethods.ALLOW_ALL,
-                origin: new LoadBalancerV2Origin(openWebUISvc.loadBalancer, {
+                origin: new LoadBalancerV2Origin(openWebUIAlb, {
                     protocolPolicy: OriginProtocolPolicy.HTTP_ONLY,
-                    
-                    // customHeaders: { 'x-unique-header': 'RUDY-LLM-PRIVATE-LINK' },
-                    
                 }),
                 originRequestPolicy: OriginRequestPolicy.ALL_VIEWER,
                 cachePolicy: CachePolicy.USE_ORIGIN_CACHE_CONTROL_HEADERS,
@@ -176,29 +236,27 @@ export class OpenWebUIEcsConstruct extends Construct {
             },
         });
 
-        // FUTURE TODO
-        // // -----------------------------
-        // // WAF Setup
-        // // -----------------------------
-        // const webACL = new CfnWebACL(this, 'WebACL', {
-        //     defaultAction: { allow: {} },
-        //     scope: 'CLOUDFRONT',
-        //     visibilityConfig: {
-        //         cloudWatchMetricsEnabled: true,
-        //         metricName: 'cloudfrontWebAcl',
-        //         sampledRequestsEnabled: true,
-        //     },
-        //     rules: [],
-        // });
+        const pipelinesDistribution = new Distribution(this, 'PipelinesDistribution', {
+            defaultBehavior: {
+                allowedMethods: AllowedMethods.ALLOW_ALL,
+                origin: new LoadBalancerV2Origin(pipelinesAlb, {
+                    protocolPolicy: OriginProtocolPolicy.HTTP_ONLY,
+                }),
+                originRequestPolicy: OriginRequestPolicy.ALL_VIEWER,
+                cachePolicy: CachePolicy.CACHING_DISABLED,
+                viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            },
+        });
 
-        // new CfnWebACLAssociation(this, 'WebACLAssociation', {
-        //     resourceArn: distribution.distributionArn,
-        //     webAclArn: webACL.attrArn,
-        // });
+        // Outputs
+        new CfnOutput(this, 'OpenWebUI-CloudFrontDomain', {
+            value: openwebuiDistribution.domainName,
+            description: 'The CloudFront distribution domain name for Open WebUI.',
+        });
 
-        new CfnOutput(this, 'CloudFrontDomain', {
-            value: distribution.domainName,
-            description: 'The CloudFront distribution domain name',
+        new CfnOutput(this, 'OpenWebUI-Pipelines-CloudFrontDomain', {
+            value: pipelinesDistribution.domainName,
+            description: 'The CloudFront distribution domain name for the Open WebUI Pipelines service.',
         });
     }
 }

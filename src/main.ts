@@ -18,6 +18,6 @@ const devEnv = {
 
 const app = new App();
 
-new RudyLLMStack(app, 'rudy-llm', { env: devEnv });
+new RudyLLMStack(app, 'OpenWebUIStack', { env: devEnv });
 
 app.synth();
