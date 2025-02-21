@@ -173,7 +173,6 @@ export class OpenWebUIEcsConstruct extends Construct {
             const pipelinesAlb = new ApplicationLoadBalancer(this, 'PipelinesAlb', {
                 vpc,
                 internetFacing: true,
-
                 securityGroup: pipelinesAlbSG,
             });
             const pipelinesTargetGroup = new ApplicationTargetGroup(this, 'PipelinesTargetGroup', {
@@ -194,7 +193,7 @@ export class OpenWebUIEcsConstruct extends Construct {
                 port: 443,
                 protocol: ApplicationProtocol.HTTPS,
                 certificates: [{
-                    certificateArn: this.node.tryGetContext("ACM_ARN"),
+                    certificateArn: acmArn,
                 }],
                 defaultTargetGroups: [pipelinesTargetGroup],
             });
