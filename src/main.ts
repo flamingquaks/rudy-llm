@@ -2,7 +2,7 @@ import { App, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { OpenWebUIEcsConstruct } from './llm-construct';
 
-export class RudyLLMStack extends Stack {
+export class OpenWebUIStack extends Stack {
   constructor(scope: Construct, id: string, props: StackProps = {}) {
     super(scope, id, props);
 
@@ -18,6 +18,6 @@ const devEnv = {
 
 const app = new App();
 
-new RudyLLMStack(app, 'OpenWebUIStack', { env: devEnv });
+new OpenWebUIStack(app, 'OpenWebUIStack', { env: devEnv });
 
 app.synth();
