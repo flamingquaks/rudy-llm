@@ -15,6 +15,5 @@
     "us-east-1e",
     "us-east-1f"
   ],
-  "PIPELINE_HOSTNAME": "pipeline.owui.asw.wwps.aws.dev",
   "ACM_ARN": "arn:aws:acm:us-east-1:058264355679:certificate/0d7df372-15be-483b-893b-ecfd14e6359d"
 }

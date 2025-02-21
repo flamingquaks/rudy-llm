@@ -144,39 +144,71 @@ export class OpenWebUIEcsConstruct extends Construct {
         // Security Groups
         const serviceSG = new SecurityGroup(this, 'ServiceSG', { vpc });
         const openWebUIAlbSG = new SecurityGroup(this, 'OpenWebUIAlbSG', { vpc });
-        const pipelinesAlbSG = new SecurityGroup(this, 'PipelinesAlbSG', { vpc });
-
         // Allow ALB to access service
-        serviceSG.connections.allowFrom(openWebUIAlbSG, Port.tcp(8080));
-        serviceSG.connections.allowFrom(pipelinesAlbSG, Port.tcp(9099));
-
+        serviceSG.connections.allowFrom(openWebUIAlbSG, Port.tcp(8080));        
         // Allow CloudFront to access ALBs
         openWebUIAlbSG.addIngressRule(Peer.prefixList(cfPrefixListId), Port.tcp(80));
-        pipelinesAlbSG.addIngressRule(Peer.prefixList(cfPrefixListId), Port.tcp(80));
+
+        const immutableServiceSG = SecurityGroup.fromLookupById(this, 'ImmutableServiceSG', serviceSG.securityGroupId);
+        const immutableOpenWebUIAlbSG = SecurityGroup.fromLookupById(this, 'ImmutableOpenWebUIAlbSG', openWebUIAlbSG.securityGroupId);
 
         // Fargate Service
         const fargateService = new FargateService(this, 'OpenWebUIService', {
             cluster,
             taskDefinition,
-            securityGroups: [serviceSG],
+            securityGroups: [immutableServiceSG],
             vpcSubnets: { subnetType: SubnetType.PUBLIC },
             assignPublicIp: true,
             desiredCount: 1,
             minHealthyPercent: 50,
         });
+        
+        if (this.node.tryGetContext("ACM_ARN")) {
+            const pipelinesAlbSG = new SecurityGroup(this, 'PipelinesAlbSG', { vpc });
+            pipelinesAlbSG.addIngressRule(Peer.anyIpv4(), Port.tcp(443));
+            const immutablePipelinesAlbSg = SecurityGroup.fromLookupById(this, 'ImmutablePipelinesAlbSG', pipelinesAlbSG.securityGroupId)
+            const pipelinesAlb = new ApplicationLoadBalancer(this, 'PipelinesAlb', {
+                vpc,
+                internetFacing: true,
+
+                securityGroup: immutablePipelinesAlbSg,
+            });
+            const pipelinesTargetGroup = new ApplicationTargetGroup(this, 'PipelinesTargetGroup', {
+                vpc,
+                port: 9099,
+                protocol: ApplicationProtocol.HTTP,
+                targetType: TargetType.IP,
+                healthCheck: {
+                    path: '/',
+                    healthyHttpCodes: '200',
+                },
+            });
+            pipelinesTargetGroup.addTarget(fargateService.loadBalancerTarget({
+                containerName: 'pipelines',
+                containerPort: 9099
+            }));
+            pipelinesAlb.addListener('PipelinesListener', {
+                port: 443,
+                protocol: ApplicationProtocol.HTTPS,
+                certificates: [{
+                    certificateArn: this.node.tryGetContext("ACM_ARN"),
+                }],
+                defaultTargetGroups: [pipelinesTargetGroup],
+            });
+        }
+        
+        
+
+        
 
         // Load Balancers
         const openWebUIAlb = new ApplicationLoadBalancer(this, 'OpenWebUIAlb', {
             vpc,
             internetFacing: true,
-            securityGroup: openWebUIAlbSG,
+            securityGroup: immutableOpenWebUIAlbSG,
         });
 
-        const pipelinesAlb = new ApplicationLoadBalancer(this, 'PipelinesAlb', {
-            vpc,
-            internetFacing: true,
-            securityGroup: pipelinesAlbSG,
-        });
+       
 
         // Target Groups
         const openWebUITargetGroup = new ApplicationTargetGroup(this, 'OpenWebUITargetGroup', {
@@ -194,20 +226,7 @@ export class OpenWebUIEcsConstruct extends Construct {
             containerPort: 8080
         }));
 
-        const pipelinesTargetGroup = new ApplicationTargetGroup(this, 'PipelinesTargetGroup', {
-            vpc,
-            port: 9099,
-            protocol: ApplicationProtocol.HTTP,
-            targetType: TargetType.IP,
-            healthCheck: {
-                path: '/',
-                healthyHttpCodes: '200',
-            },
-        });
-        pipelinesTargetGroup.addTarget(fargateService.loadBalancerTarget({
-            containerName: 'pipelines',
-            containerPort: 9099
-        }));
+        
 
 
         // ALB Listeners
@@ -217,11 +236,7 @@ export class OpenWebUIEcsConstruct extends Construct {
             defaultTargetGroups: [openWebUITargetGroup],
         });
 
-        pipelinesAlb.addListener('PipelinesListener', {
-            port: 80,
-            protocol: ApplicationProtocol.HTTP,
-            defaultTargetGroups: [pipelinesTargetGroup],
-        });
+       
 
         // CloudFront Distributions
         const openwebuiDistribution = new Distribution(this, 'WebUIDistribution', {
@@ -236,17 +251,6 @@ export class OpenWebUIEcsConstruct extends Construct {
             },
         });
 
-        const pipelinesDistribution = new Distribution(this, 'PipelinesDistribution', {
-            defaultBehavior: {
-                allowedMethods: AllowedMethods.ALLOW_ALL,
-                origin: new LoadBalancerV2Origin(pipelinesAlb, {
-                    protocolPolicy: OriginProtocolPolicy.HTTP_ONLY,
-                }),
-                originRequestPolicy: OriginRequestPolicy.ALL_VIEWER,
-                cachePolicy: CachePolicy.CACHING_DISABLED,
-                viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-            },
-        });
 
         // Outputs
         new CfnOutput(this, 'OpenWebUI-CloudFrontDomain', {
@@ -254,9 +258,5 @@ export class OpenWebUIEcsConstruct extends Construct {
             description: 'The CloudFront distribution domain name for Open WebUI.',
         });
 
-        new CfnOutput(this, 'OpenWebUI-Pipelines-CloudFrontDomain', {
-            value: pipelinesDistribution.domainName,
-            description: 'The CloudFront distribution domain name for the Open WebUI Pipelines service.',
-        });
     }
 }
