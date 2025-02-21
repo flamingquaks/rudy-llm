@@ -15,5 +15,6 @@
     "us-east-1e",
     "us-east-1f"
   ],
-  "ACM_ARN": "arn:aws:acm:us-east-1:058264355679:certificate/0d7df372-15be-483b-893b-ecfd14e6359d"
+  "acm-arn:account=058264355679:region=us-east-1": "arn:aws:acm:us-east-1:058264355679:certificate/0d7df372-15be-483b-893b-ecfd14e6359d",
+  "acm-arn:account=084375570259:region=us-east-1": "arn:aws:acm:us-east-1:084375570259:certificate/89f91e84-1990-47f0-89f7-57aba9e6f78c"
 }

@@ -1,5 +1,4 @@
-
-import { RemovalPolicy, CfnOutput } from 'aws-cdk-lib';
+import { RemovalPolicy, CfnOutput, Stack } from 'aws-cdk-lib';
 import { PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 import { Vpc, Peer, Port, SecurityGroup, SubnetType } from 'aws-cdk-lib/aws-ec2';
@@ -16,6 +15,13 @@ export class OpenWebUIEcsConstruct extends Construct {
     constructor(scope: Construct, id: string) {
         super(scope, id);
 
+        // At the top of your constructor, get the account and region. You might get them via Stack props or from environment variables.
+        const accountId = Stack.of(this).account;
+        const region = Stack.of(this).region;
+        const acmContextKey = `acm-arn:account=${accountId}:region=${region}`;
+        const acmArn = this.node.tryGetContext(acmContextKey);
+
+        
 
         // API Key Secret
         const apiKeySecret = new Secret(this, 'APIKeySecret', {
@@ -163,7 +169,7 @@ export class OpenWebUIEcsConstruct extends Construct {
             minHealthyPercent: 50,
         });
         
-        if (this.node.tryGetContext("ACM_ARN")) {
+        if (acmArn) {
             const pipelinesAlbSG = new SecurityGroup(this, 'PipelinesAlbSG', { vpc });
             pipelinesAlbSG.addIngressRule(Peer.anyIpv4(), Port.tcp(443));
             const immutablePipelinesAlbSg = SecurityGroup.fromLookupById(this, 'ImmutablePipelinesAlbSG', pipelinesAlbSG.securityGroupId)
