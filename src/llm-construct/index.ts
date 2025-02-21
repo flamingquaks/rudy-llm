@@ -155,14 +155,12 @@ export class OpenWebUIEcsConstruct extends Construct {
         // Allow CloudFront to access ALBs
         openWebUIAlbSG.addIngressRule(Peer.prefixList(cfPrefixListId), Port.tcp(80));
 
-        const immutableServiceSG = SecurityGroup.fromLookupById(this, 'ImmutableServiceSG', serviceSG.securityGroupId);
-        const immutableOpenWebUIAlbSG = SecurityGroup.fromLookupById(this, 'ImmutableOpenWebUIAlbSG', openWebUIAlbSG.securityGroupId);
 
         // Fargate Service
         const fargateService = new FargateService(this, 'OpenWebUIService', {
             cluster,
             taskDefinition,
-            securityGroups: [immutableServiceSG],
+            securityGroups: [serviceSG],
             vpcSubnets: { subnetType: SubnetType.PUBLIC },
             assignPublicIp: true,
             desiredCount: 1,
@@ -172,12 +170,11 @@ export class OpenWebUIEcsConstruct extends Construct {
         if (acmArn) {
             const pipelinesAlbSG = new SecurityGroup(this, 'PipelinesAlbSG', { vpc });
             pipelinesAlbSG.addIngressRule(Peer.anyIpv4(), Port.tcp(443));
-            const immutablePipelinesAlbSg = SecurityGroup.fromLookupById(this, 'ImmutablePipelinesAlbSG', pipelinesAlbSG.securityGroupId)
             const pipelinesAlb = new ApplicationLoadBalancer(this, 'PipelinesAlb', {
                 vpc,
                 internetFacing: true,
 
-                securityGroup: immutablePipelinesAlbSg,
+                securityGroup: pipelinesAlbSG,
             });
             const pipelinesTargetGroup = new ApplicationTargetGroup(this, 'PipelinesTargetGroup', {
                 vpc,
@@ -211,7 +208,7 @@ export class OpenWebUIEcsConstruct extends Construct {
         const openWebUIAlb = new ApplicationLoadBalancer(this, 'OpenWebUIAlb', {
             vpc,
             internetFacing: true,
-            securityGroup: immutableOpenWebUIAlbSG,
+            securityGroup: openWebUIAlbSG,
         });
 
        
