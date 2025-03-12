@@ -2,7 +2,7 @@ import { RemovalPolicy, CfnOutput, Stack } from 'aws-cdk-lib';
 import { PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 import { Vpc, Peer, Port, SecurityGroup, SubnetType } from 'aws-cdk-lib/aws-ec2';
-import { Cluster, FargateTaskDefinition, ContainerImage, LogDrivers, Secret as ECSSecret, FargateService, Secret as EcsSecret } from 'aws-cdk-lib/aws-ecs';
+import { Cluster, FargateTaskDefinition, ContainerImage, LogDrivers, Secret as ECSSecret, FargateService } from 'aws-cdk-lib/aws-ecs';
 import { FileSystem, PerformanceMode } from 'aws-cdk-lib/aws-efs';
 import { AllowedMethods, CachePolicy, Distribution, OriginProtocolPolicy, OriginRequestPolicy, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
 import { LoadBalancerV2Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
@@ -62,10 +62,20 @@ export class OpenWebUIEcsConstruct extends Construct {
         });
 
         // -----------------------------
-        // OIDC Authentication Secret
+        // OAuth2 Proxy Authentication Secret
         // -----------------------------
         const oidcSecret = new Secret(this, 'OIDCSecret', {
             description: 'OIDC authentication credentials for OpenWebUI',
+            generateSecretString: {
+                secretStringTemplate: JSON.stringify({
+                    "OAUTH2_PROXY_CLIENT_ID": "placeholder-client-id",
+                    "OAUTH2_PROXY_CLIENT_SECRET": "placeholder-client-secret",
+                    "OAUTH2_PROXY_COOKIE_SECRET": "placeholder-cookie-secret",
+                    "OAUTH2_PROXY_OIDC_ISSUER_URL": "https://placeholder-provider-url",
+                    "OAUTH2_PROXY_EMAIL_DOMAINS": "*"
+                }),
+                generateStringKey: 'dummy' // This is required but won't be used
+            }
         });
 
         // -----------------------------
@@ -82,7 +92,7 @@ export class OpenWebUIEcsConstruct extends Construct {
             resources: ['*'],
         }));
         
-        // Add permission to read the OIDC secret
+        // Add permission to read the OAuth2 secret
         taskDefinition.addToTaskRolePolicy(new PolicyStatement({
             effect: Effect.ALLOW,
             actions: [
@@ -110,20 +120,15 @@ export class OpenWebUIEcsConstruct extends Construct {
             },
         });
 
-        // Containers
+        // OpenWebUI Container
         const openWebUIContainer = taskDefinition.addContainer('openwebui', {
             image: ContainerImage.fromRegistry('ghcr.io/open-webui/open-webui:main'),
             logging: LogDrivers.awsLogs({ streamPrefix: 'openwebui' }),
             environment: {
                 DATA_DIR: '/app/backend/data',
-            },
-            secrets: {
-                // Add OIDC environment variables from the secret
-                OAUTH_CLIENT_ID: EcsSecret.fromSecretsManager(oidcSecret, 'OAUTH_CLIENT_ID'),
-                OAUTH_CLIENT_SECRET: EcsSecret.fromSecretsManager(oidcSecret, 'OAUTH_CLIENT_SECRET'),
-                OPENID_PROVIDER_URL: EcsSecret.fromSecretsManager(oidcSecret, 'OPENID_PROVIDER_URL'),
-                OAUTH_PROVIDER_NAME: EcsSecret.fromSecretsManager(oidcSecret, 'OAUTH_PROVIDER_NAME'),
-                OAUTH_SCOPES: EcsSecret.fromSecretsManager(oidcSecret, 'OAUTH_SCOPES'),
+                PIPELINES_URL: 'http://pipelines:9099',
+                AUTH_TYPE: 'oauth2-proxy',
+                AUTH_HOST: 'http://localhost:4180',
             }
         });
         openWebUIContainer.addPortMappings({ containerPort: 8080 });
@@ -283,9 +288,36 @@ export class OpenWebUIEcsConstruct extends Construct {
             description: 'The CloudFront distribution domain name for Open WebUI.',
         });
 
-        new CfnOutput(this, 'OIDCSecretArn', {
+        // OAuth2 Proxy Container (after CloudFront distribution is created to use its domain)
+        const oauth2ProxyContainer = taskDefinition.addContainer('oauth2-proxy', {
+            image: ContainerImage.fromRegistry('quay.io/oauth2-proxy/oauth2-proxy:latest'),
+            logging: LogDrivers.awsLogs({ streamPrefix: 'oauth2-proxy' }),
+            environment: {
+                OAUTH2_PROXY_HTTP_ADDRESS: '0.0.0.0:4180',
+                OAUTH2_PROXY_PROVIDER: 'oidc',
+                OAUTH2_PROXY_UPSTREAMS: 'http://127.0.0.1:8080',
+                OAUTH2_PROXY_COOKIE_SECURE: 'true',
+                OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: 'true',
+                OAUTH2_PROXY_PASS_ACCESS_TOKEN: 'true',
+                OAUTH2_PROXY_PASS_USER_HEADERS: 'true',
+                OAUTH2_PROXY_SET_XAUTHREQUEST: 'true',
+                // Force HTTPS for redirect URI using CloudFront domain
+                OAUTH2_PROXY_REDIRECT_URL: `https://${openwebuiDistribution.domainName}/oauth2/callback`,
+                OAUTH2_PROXY_FORCE_HTTPS: 'true',
+            },
+            secrets: {
+                OAUTH2_PROXY_CLIENT_ID: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_CLIENT_ID'),
+                OAUTH2_PROXY_CLIENT_SECRET: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_CLIENT_SECRET'),
+                OAUTH2_PROXY_COOKIE_SECRET: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_COOKIE_SECRET'),
+                OAUTH2_PROXY_OIDC_ISSUER_URL: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_OIDC_ISSUER_URL'),
+                OAUTH2_PROXY_EMAIL_DOMAINS: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_EMAIL_DOMAINS'),
+            }
+        });
+        oauth2ProxyContainer.addPortMappings({ containerPort: 4180 });
+
+        new CfnOutput(this, 'OAuth2SecretArn', {
             value: oidcSecret.secretArn,
-            description: 'ARN of the OIDC credentials secret',
+            description: 'ARN of the OAuth2 Proxy credentials secret',
         });
 
     }

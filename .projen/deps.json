@@ -18,6 +18,10 @@
       "type": "build"
     },
     {
+      "name": "commander",
+      "type": "build"
+    },
+    {
       "name": "esbuild",
       "type": "build"
     },
@@ -27,6 +31,10 @@
     },
     {
       "name": "globals",
+      "type": "build"
+    },
+    {
+      "name": "inquirer",
       "type": "build"
     },
     {
