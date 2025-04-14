@@ -4,23 +4,32 @@ import { Construct } from 'constructs';
 import { Vpc, Peer, Port, SecurityGroup, SubnetType } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, FargateTaskDefinition, ContainerImage, LogDrivers, Secret as ECSSecret, FargateService } from 'aws-cdk-lib/aws-ecs';
 import { FileSystem, PerformanceMode } from 'aws-cdk-lib/aws-efs';
-import { AllowedMethods, CachePolicy, Distribution, OriginProtocolPolicy, OriginRequestPolicy, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
+import { AllowedMethods, CachePolicy, Distribution, DistributionProps, OriginProtocolPolicy, OriginRequestPolicy, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
 import { LoadBalancerV2Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { AwsCustomResource, AwsCustomResourcePolicy } from 'aws-cdk-lib/custom-resources';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { ApplicationLoadBalancer, ApplicationProtocol, ApplicationTargetGroup, TargetType } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { Bucket, BlockPublicAccess, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
 // import { CfnWebACL, CfnWebACLAssociation } from 'aws-cdk-lib/aws-wafv2';
 
+export interface OpenWebUIEcsConstructProps {
+  acmCertArn: string;
+  storageType: 'efs' | 's3';
+  hostname?: string;
+  ssoConfig?: {
+    provider_url: string;
+    client_id: string;
+  };
+}
+
 export class OpenWebUIEcsConstruct extends Construct {
-    constructor(scope: Construct, id: string) {
+    constructor(scope: Construct, id: string, props: OpenWebUIEcsConstructProps) {
         super(scope, id);
 
-        // At the top of your constructor, get the account and region. You might get them via Stack props or from environment variables.
-        const accountId = Stack.of(this).account;
-        const region = Stack.of(this).region;
-        const acmContextKey = `acm-arn:account=${accountId}:region=${region}`;
-        const acmArn = this.node.tryGetContext(acmContextKey);
+        // Get the ACM certificate ARN from props
+        const acmArn = props.acmCertArn;
 
         
 
@@ -40,26 +49,41 @@ export class OpenWebUIEcsConstruct extends Construct {
         const vpc = new Vpc(this, 'OpenWebUIVpc', { maxAzs: 2 });
         const cluster = new Cluster(this, 'OpenWebUICluster', { vpc });
 
-        // EFS Setup
-        const fileSystem = new FileSystem(this, 'EfsFileSystem', {
-            vpc,
-            removalPolicy: RemovalPolicy.DESTROY,
-            performanceMode: PerformanceMode.GENERAL_PURPOSE,
-        });
+        // Storage setup based on configuration
+        let fileSystem;
+        let openWebUIAccessPoint;
+        let pipelinesAccessPoint;
+        let storageBucket;
 
-        fileSystem.connections.allowDefaultPortFrom(Peer.ipv4(vpc.vpcCidrBlock));
+        if (props.storageType === 'efs') {
+            // EFS Setup
+            fileSystem = new FileSystem(this, 'EfsFileSystem', {
+                vpc,
+                removalPolicy: RemovalPolicy.DESTROY,
+                performanceMode: PerformanceMode.GENERAL_PURPOSE,
+            });
 
-        const openWebUIAccessPoint = fileSystem.addAccessPoint('OpenWebUIAccessPoint', {
-            path: '/openwebui',
-            createAcl: { ownerUid: '1000', ownerGid: '1000', permissions: '750' },
-            posixUser: { uid: '1000', gid: '1000' },
-        });
+            fileSystem.connections.allowDefaultPortFrom(Peer.ipv4(vpc.vpcCidrBlock));
 
-        const pipelinesAccessPoint = fileSystem.addAccessPoint('PipelinesAccessPoint', {
-            path: '/pipelines',
-            createAcl: { ownerUid: '1000', ownerGid: '1000', permissions: '750' },
-            posixUser: { uid: '1000', gid: '1000' },
-        });
+            openWebUIAccessPoint = fileSystem.addAccessPoint('OpenWebUIAccessPoint', {
+                path: '/openwebui',
+                createAcl: { ownerUid: '1000', ownerGid: '1000', permissions: '750' },
+                posixUser: { uid: '1000', gid: '1000' },
+            });
+
+            pipelinesAccessPoint = fileSystem.addAccessPoint('PipelinesAccessPoint', {
+                path: '/pipelines',
+                createAcl: { ownerUid: '1000', ownerGid: '1000', permissions: '750' },
+                posixUser: { uid: '1000', gid: '1000' },
+            });
+        } else if (props.storageType === 's3') {
+            // S3 Setup
+            storageBucket = new Bucket(this, 'StorageBucket', {
+                removalPolicy: RemovalPolicy.RETAIN,
+                blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+                encryption: BucketEncryption.S3_MANAGED,
+            });
+        }
 
         // -----------------------------
         // OAuth2 Proxy Authentication Secret
@@ -68,10 +92,10 @@ export class OpenWebUIEcsConstruct extends Construct {
             description: 'OIDC authentication credentials for OpenWebUI',
             generateSecretString: {
                 secretStringTemplate: JSON.stringify({
-                    "OAUTH2_PROXY_CLIENT_ID": "placeholder-client-id",
+                    "OAUTH2_PROXY_CLIENT_ID": props.ssoConfig ? props.ssoConfig.client_id : "placeholder-client-id",
                     "OAUTH2_PROXY_CLIENT_SECRET": "placeholder-client-secret",
                     "OAUTH2_PROXY_COOKIE_SECRET": "placeholder-cookie-secret",
-                    "OAUTH2_PROXY_OIDC_ISSUER_URL": "https://placeholder-provider-url",
+                    "OAUTH2_PROXY_OIDC_ISSUER_URL": props.ssoConfig ? props.ssoConfig.provider_url : "https://placeholder-provider-url",
                     "OAUTH2_PROXY_EMAIL_DOMAINS": "*"
                 }),
                 generateStringKey: 'dummy' // This is required but won't be used
@@ -102,23 +126,41 @@ export class OpenWebUIEcsConstruct extends Construct {
             resources: [oidcSecret.secretArn],
         }));
 
-        taskDefinition.addVolume({
-            name: 'openwebuiVolume',
-            efsVolumeConfiguration: {
-                fileSystemId: fileSystem.fileSystemId,
-                transitEncryption: 'ENABLED',
-                authorizationConfig: { accessPointId: openWebUIAccessPoint.accessPointId, iam: 'DISABLED' },
-            },
-        });
+        // Add storage volumes based on storage type
+        if (props.storageType === 'efs' && fileSystem && openWebUIAccessPoint && pipelinesAccessPoint) {
+            taskDefinition.addVolume({
+                name: 'openwebuiVolume',
+                efsVolumeConfiguration: {
+                    fileSystemId: fileSystem.fileSystemId,
+                    transitEncryption: 'ENABLED',
+                    authorizationConfig: { accessPointId: openWebUIAccessPoint.accessPointId, iam: 'DISABLED' },
+                },
+            });
 
-        taskDefinition.addVolume({
-            name: 'pipelinesVolume',
-            efsVolumeConfiguration: {
-                fileSystemId: fileSystem.fileSystemId,
-                transitEncryption: 'ENABLED',
-                authorizationConfig: { accessPointId: pipelinesAccessPoint.accessPointId, iam: 'DISABLED' },
-            },
-        });
+            taskDefinition.addVolume({
+                name: 'pipelinesVolume',
+                efsVolumeConfiguration: {
+                    fileSystemId: fileSystem.fileSystemId,
+                    transitEncryption: 'ENABLED',
+                    authorizationConfig: { accessPointId: pipelinesAccessPoint.accessPointId, iam: 'DISABLED' },
+                },
+            });
+        } else if (props.storageType === 's3' && storageBucket) {
+            // Add S3 permissions to task role
+            taskDefinition.addToTaskRolePolicy(new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    's3:GetObject',
+                    's3:PutObject',
+                    's3:ListBucket',
+                    's3:DeleteObject'
+                ],
+                resources: [
+                    storageBucket.bucketArn,
+                    `${storageBucket.bucketArn}/*`
+                ],
+            }));
+        }
 
         // OpenWebUI Container
         const openWebUIContainer = taskDefinition.addContainer('openwebui', {
@@ -127,16 +169,25 @@ export class OpenWebUIEcsConstruct extends Construct {
             environment: {
                 DATA_DIR: '/app/backend/data',
                 PIPELINES_URL: 'http://pipelines:9099',
-                AUTH_TYPE: 'oauth2-proxy',
-                AUTH_HOST: 'http://localhost:4180',
+                AUTH_TYPE: props.ssoConfig ? 'oauth2-proxy' : 'none',
+                ...(props.ssoConfig ? { AUTH_HOST: 'http://localhost:4180' } : {}),
+                ...(props.storageType === 's3' && storageBucket ? { 
+                    STORAGE_TYPE: 's3',
+                    S3_BUCKET_NAME: storageBucket.bucketName,
+                    AWS_REGION: Stack.of(this).region
+                } : {})
             }
         });
         openWebUIContainer.addPortMappings({ containerPort: 8080 });
-        openWebUIContainer.addMountPoints({
-            containerPath: '/app/backend/data',
-            sourceVolume: 'openwebuiVolume',
-            readOnly: false,
-        });
+        
+        // Add mount points if using EFS
+        if (props.storageType === 'efs') {
+            openWebUIContainer.addMountPoints({
+                containerPath: '/app/backend/data',
+                sourceVolume: 'openwebuiVolume',
+                readOnly: false,
+            });
+        }
 
         const pipelinesContainer = taskDefinition.addContainer('pipelines', {
             image: ContainerImage.fromRegistry('ghcr.io/open-webui/pipelines:main'),
@@ -144,14 +195,23 @@ export class OpenWebUIEcsConstruct extends Construct {
             secrets: {
                 PIPELINES_API_KEY: ECSSecret.fromSecretsManager(apiKeySecret, 'apiKey'),
             },
+            environment: props.storageType === 's3' && storageBucket ? {
+                STORAGE_TYPE: 's3',
+                S3_BUCKET_NAME: storageBucket.bucketName,
+                AWS_REGION: Stack.of(this).region
+            } : {},
             essential: true
         });
         pipelinesContainer.addPortMappings({ containerPort: 9099 });
-        pipelinesContainer.addMountPoints({
-            containerPath: '/app/pipelines',
-            sourceVolume: 'pipelinesVolume',
-            readOnly: false,
-        });
+        
+        // Add mount points if using EFS
+        if (props.storageType === 'efs') {
+            pipelinesContainer.addMountPoints({
+                containerPath: '/app/pipelines',
+                sourceVolume: 'pipelinesVolume',
+                readOnly: false,
+            });
+        }
 
         // CloudFront Prefix List Lookup
         const cfPrefixListResource = new AwsCustomResource(this, 'CfPrefixListLookup', {
@@ -267,9 +327,15 @@ export class OpenWebUIEcsConstruct extends Construct {
         });
 
        
+        const domainNames = []
+        if (props.hostname) {
+            domainNames.push(props.hostname);
+        }
 
         // CloudFront Distributions
-        const openwebuiDistribution = new Distribution(this, 'WebUIDistribution', {
+        const distributionProps: DistributionProps = {
+            domainNames: domainNames,
+            certificate: acmArn ? Certificate.fromCertificateArn(this, 'AcmCertificate', acmArn) : undefined,
             defaultBehavior: {
                 allowedMethods: AllowedMethods.ALLOW_ALL,
                 origin: new LoadBalancerV2Origin(openWebUIAlb, {
@@ -279,7 +345,10 @@ export class OpenWebUIEcsConstruct extends Construct {
                 cachePolicy: CachePolicy.USE_ORIGIN_CACHE_CONTROL_HEADERS,
                 viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             },
-        });
+        };
+
+
+        const openwebuiDistribution = new Distribution(this, 'WebUIDistribution', distributionProps);
 
 
         // Outputs
@@ -288,37 +357,57 @@ export class OpenWebUIEcsConstruct extends Construct {
             description: 'The CloudFront distribution domain name for Open WebUI.',
         });
 
+        if (props.hostname) {
+            new CfnOutput(this, 'OpenWebUI-CustomDomain', {
+                value: props.hostname,
+                description: 'The custom domain name for Open WebUI.',
+            });
+        }
+
+        if (props.storageType === 's3' && storageBucket) {
+            new CfnOutput(this, 'OpenWebUI-StorageBucket', {
+                value: storageBucket.bucketName,
+                description: 'The S3 bucket used for storage.',
+            });
+        } else if (props.storageType === 'efs' && fileSystem) {
+            new CfnOutput(this, 'OpenWebUI-FileSystem', {
+                value: fileSystem.fileSystemId,
+                description: 'The EFS file system ID used for storage.',
+            });
+        }
+
         // OAuth2 Proxy Container (after CloudFront distribution is created to use its domain)
-        const oauth2ProxyContainer = taskDefinition.addContainer('oauth2-proxy', {
-            image: ContainerImage.fromRegistry('quay.io/oauth2-proxy/oauth2-proxy:latest'),
-            logging: LogDrivers.awsLogs({ streamPrefix: 'oauth2-proxy' }),
-            environment: {
-                OAUTH2_PROXY_HTTP_ADDRESS: '0.0.0.0:4180',
-                OAUTH2_PROXY_PROVIDER: 'oidc',
-                OAUTH2_PROXY_UPSTREAMS: 'http://127.0.0.1:8080',
-                OAUTH2_PROXY_COOKIE_SECURE: 'true',
-                OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: 'true',
-                OAUTH2_PROXY_PASS_ACCESS_TOKEN: 'true',
-                OAUTH2_PROXY_PASS_USER_HEADERS: 'true',
-                OAUTH2_PROXY_SET_XAUTHREQUEST: 'true',
-                // Force HTTPS for redirect URI using CloudFront domain
-                OAUTH2_PROXY_REDIRECT_URL: `https://${openwebuiDistribution.domainName}/oauth2/callback`,
-                OAUTH2_PROXY_FORCE_HTTPS: 'true',
-            },
-            secrets: {
-                OAUTH2_PROXY_CLIENT_ID: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_CLIENT_ID'),
-                OAUTH2_PROXY_CLIENT_SECRET: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_CLIENT_SECRET'),
-                OAUTH2_PROXY_COOKIE_SECRET: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_COOKIE_SECRET'),
-                OAUTH2_PROXY_OIDC_ISSUER_URL: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_OIDC_ISSUER_URL'),
-                OAUTH2_PROXY_EMAIL_DOMAINS: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_EMAIL_DOMAINS'),
-            }
-        });
-        oauth2ProxyContainer.addPortMappings({ containerPort: 4180 });
-
-        new CfnOutput(this, 'OAuth2SecretArn', {
-            value: oidcSecret.secretArn,
-            description: 'ARN of the OAuth2 Proxy credentials secret',
-        });
-
+        if (props.ssoConfig) {
+            const oauth2ProxyContainer = taskDefinition.addContainer('oauth2-proxy', {
+                image: ContainerImage.fromRegistry('quay.io/oauth2-proxy/oauth2-proxy:latest'),
+                logging: LogDrivers.awsLogs({ streamPrefix: 'oauth2-proxy' }),
+                environment: {
+                    OAUTH2_PROXY_HTTP_ADDRESS: '0.0.0.0:4180',
+                    OAUTH2_PROXY_PROVIDER: 'oidc',
+                    OAUTH2_PROXY_UPSTREAMS: 'http://127.0.0.1:8080',
+                    OAUTH2_PROXY_COOKIE_SECURE: 'true',
+                    OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: 'true',
+                    OAUTH2_PROXY_PASS_ACCESS_TOKEN: 'true',
+                    OAUTH2_PROXY_PASS_USER_HEADERS: 'true',
+                    OAUTH2_PROXY_SET_XAUTHREQUEST: 'true',
+                    // Force HTTPS for redirect URI using CloudFront domain or custom domain
+                    OAUTH2_PROXY_REDIRECT_URL: `https://${props.hostname || openwebuiDistribution.domainName}/oauth2/callback`,
+                    OAUTH2_PROXY_FORCE_HTTPS: 'true',
+                },
+                secrets: {
+                    OAUTH2_PROXY_CLIENT_ID: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_CLIENT_ID'),
+                    OAUTH2_PROXY_CLIENT_SECRET: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_CLIENT_SECRET'),
+                    OAUTH2_PROXY_COOKIE_SECRET: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_COOKIE_SECRET'),
+                    OAUTH2_PROXY_OIDC_ISSUER_URL: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_OIDC_ISSUER_URL'),
+                    OAUTH2_PROXY_EMAIL_DOMAINS: ECSSecret.fromSecretsManager(oidcSecret, 'OAUTH2_PROXY_EMAIL_DOMAINS'),
+                }
+            });
+            oauth2ProxyContainer.addPortMappings({ containerPort: 4180 });
+            
+            new CfnOutput(this, 'OAuth2SecretArn', {
+                value: oidcSecret.secretArn,
+                description: 'ARN of the OAuth2 Proxy credentials secret',
+            });
+        }
     }
 }
