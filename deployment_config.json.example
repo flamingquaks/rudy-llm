@@ -1,0 +1,9 @@
+{
+  "acm_cert_arn": "arn:aws:acm:us-east-1:123456789012:certificate/abcd1234-ef56-gh78-ij90-klmnopqrstuv",
+  "storage_type": "efs",
+  "hostname": "openwebui.example.com",
+  "sso": {
+    "provider_url": "https://sso.example.com",
+    "client_id": "your-client-id"
+  }
+}
