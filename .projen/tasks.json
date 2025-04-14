@@ -64,6 +64,15 @@
       "name": "compile",
       "description": "Only compile"
     },
+    "config": {
+      "name": "config",
+      "description": "Runs the config CLI to setup the project for deployment. (Optional, project will deploy with defaults)",
+      "steps": [
+        {
+          "exec": "node deploy_config_cli.js"
+        }
+      ]
+    },
     "default": {
       "name": "default",
       "description": "Synthesize project files",
@@ -201,13 +210,13 @@
       },
       "steps": [
         {
-          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@eslint/js,@types/jest,@types/node,esbuild,eslint,globals,jest,projen,ts-jest,ts-node,typescript,typescript-eslint,uuid"
+          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@eslint/js,@types/jest,@types/node,commander,esbuild,eslint,globals,inquirer,jest,projen,ts-jest,ts-node,typescript,typescript-eslint,uuid"
         },
         {
           "exec": "npm install"
         },
         {
-          "exec": "npm update @eslint/js @types/jest @types/node aws-cdk esbuild eslint globals jest projen ts-jest ts-node typescript typescript-eslint aws-cdk-lib constructs uuid"
+          "exec": "npm update @eslint/js @types/jest @types/node aws-cdk commander esbuild eslint globals inquirer jest projen ts-jest ts-node typescript typescript-eslint aws-cdk-lib constructs uuid"
         },
         {
           "exec": "npx projen"
