@@ -2,14 +2,15 @@ import { RemovalPolicy, CfnOutput, Stack } from 'aws-cdk-lib';
 import { PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 import { Vpc, Peer, Port, SecurityGroup, SubnetType } from 'aws-cdk-lib/aws-ec2';
-import { Cluster, FargateTaskDefinition, ContainerImage, LogDrivers, Secret as ECSSecret, FargateService } from 'aws-cdk-lib/aws-ecs';
+import { Cluster, FargateTaskDefinition, ContainerImage, LogDrivers, Secret as ECSSecret, FargateService, Secret as EcsSecret } from 'aws-cdk-lib/aws-ecs';
 import { FileSystem, PerformanceMode } from 'aws-cdk-lib/aws-efs';
 import { AllowedMethods, CachePolicy, Distribution, OriginProtocolPolicy, OriginRequestPolicy, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
 import { LoadBalancerV2Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { AwsCustomResource, AwsCustomResourcePolicy } from 'aws-cdk-lib/custom-resources';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { ApplicationLoadBalancer, ApplicationProtocol, ApplicationTargetGroup, TargetType } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { ApplicationLoadBalancer, ApplicationProtocol, ApplicationTargetGroup, TargetType } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+// import { CfnWebACL, CfnWebACLAssociation } from 'aws-cdk-lib/aws-wafv2';
 
 export class OpenWebUIEcsConstruct extends Construct {
     constructor(scope: Construct, id: string) {
@@ -60,7 +61,16 @@ export class OpenWebUIEcsConstruct extends Construct {
             posixUser: { uid: '1000', gid: '1000' },
         });
 
-        // Task Definition
+        // -----------------------------
+        // OIDC Authentication Secret
+        // -----------------------------
+        const oidcSecret = new Secret(this, 'OIDCSecret', {
+            description: 'OIDC authentication credentials for OpenWebUI',
+        });
+
+        // -----------------------------
+        // ECS Task Definition and Containers
+        // -----------------------------
         const taskDefinition = new FargateTaskDefinition(this, 'OpenWebUITaskDef', {
             cpu: 4096,
             memoryLimitMiB: 8192,
@@ -70,6 +80,16 @@ export class OpenWebUIEcsConstruct extends Construct {
             effect: Effect.ALLOW,
             actions: ['bedrock:*'],
             resources: ['*'],
+        }));
+        
+        // Add permission to read the OIDC secret
+        taskDefinition.addToTaskRolePolicy(new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: [
+                'secretsmanager:GetSecretValue',
+                'secretsmanager:DescribeSecret'
+            ],
+            resources: [oidcSecret.secretArn],
         }));
 
         taskDefinition.addVolume({
@@ -96,12 +116,15 @@ export class OpenWebUIEcsConstruct extends Construct {
             logging: LogDrivers.awsLogs({ streamPrefix: 'openwebui' }),
             environment: {
                 DATA_DIR: '/app/backend/data',
-                PIPELINES_SERVICE_URL: 'http://localhost:9099',
             },
             secrets: {
-                PIPELINES_API_KEY: ECSSecret.fromSecretsManager(apiKeySecret, 'apiKey'),
-            },
-            essential: true,
+                // Add OIDC environment variables from the secret
+                OAUTH_CLIENT_ID: EcsSecret.fromSecretsManager(oidcSecret, 'OAUTH_CLIENT_ID'),
+                OAUTH_CLIENT_SECRET: EcsSecret.fromSecretsManager(oidcSecret, 'OAUTH_CLIENT_SECRET'),
+                OPENID_PROVIDER_URL: EcsSecret.fromSecretsManager(oidcSecret, 'OPENID_PROVIDER_URL'),
+                OAUTH_PROVIDER_NAME: EcsSecret.fromSecretsManager(oidcSecret, 'OAUTH_PROVIDER_NAME'),
+                OAUTH_SCOPES: EcsSecret.fromSecretsManager(oidcSecret, 'OAUTH_SCOPES'),
+            }
         });
         openWebUIContainer.addPortMappings({ containerPort: 8080 });
         openWebUIContainer.addMountPoints({
@@ -258,6 +281,11 @@ export class OpenWebUIEcsConstruct extends Construct {
         new CfnOutput(this, 'OpenWebUI-CloudFrontDomain', {
             value: openwebuiDistribution.domainName,
             description: 'The CloudFront distribution domain name for Open WebUI.',
+        });
+
+        new CfnOutput(this, 'OIDCSecretArn', {
+            value: oidcSecret.secretArn,
+            description: 'ARN of the OIDC credentials secret',
         });
 
     }
