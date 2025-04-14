@@ -22,8 +22,6 @@ const project = new awscdk.AwsCdkTypeScriptApp({
     "jest",
     "ts-jest",
     "@types/jest",
-    'commander',
-    'inquirer',
   ]
 });
 project.addTask("lint", {
@@ -34,12 +32,6 @@ project.addTask("jest", {
   exec: "jest -u",
   description: "Run jest tests"
 })
-
-project.addTask('config', {
-  exec: 'node deploy_config_cli.js',
-  description: 'Runs the config CLI to setup the project for deployment. (Optional, project will deploy with defaults)'
-})
-
 
 
 project.synth();
